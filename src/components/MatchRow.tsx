@@ -1,0 +1,115 @@
+"use client";
+import type { MatchView } from "@/lib/types";
+import { formatKickoff } from "@/lib/format";
+import { matchBoxState } from "@/lib/matchBox";
+import Flag from "./Flag";
+
+type SaveStatus = "saving" | "saved" | "error" | undefined;
+
+function TeamSide({
+  code,
+  name,
+  align,
+}: {
+  code: string | null;
+  name: string;
+  align: "left" | "right";
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 min-w-0 ${
+        align === "right" ? "justify-end text-right flex-row-reverse sm:flex-row" : ""
+      }`}
+    >
+      <Flag code={code} size={22} />
+      <span className="truncate font-semibold">{name}</span>
+    </div>
+  );
+}
+
+export default function MatchRow({
+  match,
+  homeValue,
+  awayValue,
+  locked,
+  status,
+  onChange,
+}: {
+  match: MatchView;
+  homeValue: string;
+  awayValue: string;
+  locked: boolean;
+  status: SaveStatus;
+  onChange: (home: string, away: string) => void;
+}) {
+  const homeName = match.home_team?.name ?? match.home_label ?? "Por definir";
+  const awayName = match.away_team?.name ?? match.away_label ?? "Por definir";
+  const homeCode = match.home_team?.code ?? null;
+  const awayCode = match.away_team?.code ?? null;
+  const clamp = (v: string) => v.replace(/[^0-9]/g, "").slice(0, 2);
+
+  const { finished, variant, displayHome, displayAway, boxStyle, readOnly, disabled } =
+    matchBoxState(match, homeValue, awayValue, locked);
+
+  return (
+    <div className="py-2.5 px-2 sm:px-3 rounded-xl hover:bg-[#f4f8f6] transition-colors">
+      <div className="flex items-center justify-between text-[11px] text-muted mb-1.5 min-h-[16px]">
+        <span>{formatKickoff(match.kickoff)}</span>
+        <span className="flex items-center gap-2">
+          {variant === "scored" && match.points != null && (
+            <span
+              className={`px-1.5 py-0.5 rounded-md font-bold ${
+                match.points === 4
+                  ? "bg-emerald-100 text-emerald-700"
+                  : match.points === 2
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-red-100 text-red-600"
+              }`}
+            >
+              {match.points === 0 ? "0 pts" : `+${match.points} pts`}
+            </span>
+          )}
+          {variant === "real" && <span className="chip chip-gray !py-0.5 !px-2">Jugado</span>}
+          {locked && !finished && <span title="Cerrado">🔒</span>}
+          {status === "saving" && <span className="text-muted">guardando…</span>}
+          {status === "saved" && <span className="text-emerald-600 font-bold">✓</span>}
+          {status === "error" && <span className="text-red-500">error</span>}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+        <TeamSide code={homeCode} name={homeName} align="right" />
+        <div className="flex items-center gap-1.5 justify-center">
+          <input
+            className="score-input"
+            style={boxStyle}
+            inputMode="numeric"
+            value={displayHome}
+            readOnly={readOnly}
+            disabled={disabled}
+            onChange={(e) => onChange(clamp(e.target.value), awayValue)}
+            aria-label={`Goles ${homeName}`}
+          />
+          <span className="text-muted font-bold">-</span>
+          <input
+            className="score-input"
+            style={boxStyle}
+            inputMode="numeric"
+            value={displayAway}
+            readOnly={readOnly}
+            disabled={disabled}
+            onChange={(e) => onChange(homeValue, clamp(e.target.value))}
+            aria-label={`Goles ${awayName}`}
+          />
+        </div>
+        <TeamSide code={awayCode} name={awayName} align="left" />
+      </div>
+
+      {variant === "scored" && (
+        <div className="text-center text-[11px] text-muted mt-1">
+          Resultado real: <b className="text-foreground">{match.home_score}-{match.away_score}</b>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,26 +1,139 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #eaf1ee;
+  --surface: #ffffff;
+  --text: #0f1f1a;
+  --muted: #5b7065;
+  --line: rgba(15, 40, 30, 0.10);
+  --primary: #0ca678;
+  --primary-dark: #0b8f6a;
+  --accent: #16a34a;
+  --pitch: #d8e8df;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 500px at 8% -8%, rgba(16, 185, 129, 0.16), transparent 60%),
+    radial-gradient(800px 460px at 105% 0%, rgba(34, 211, 153, 0.13), transparent 55%),
+    linear-gradient(180deg, #f3f8f5 0%, var(--bg) 100%);
+  background-attachment: fixed;
 }
+
+/* ---------- componentes ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.1rem;
+  box-shadow: 0 6px 24px -12px rgba(7, 50, 35, 0.25), 0 2px 6px -3px rgba(7, 50, 35, 0.12);
+}
+
+/* franja superior estilo cancha */
+.card-top {
+  position: relative;
+  overflow: hidden;
+}
+.card-top::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), #34d399, #22d3a3);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.8rem;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 6px 16px -8px rgba(12, 166, 120, 0.8);
+}
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+.btn-ghost {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--line);
+}
+.btn-ghost:hover { background: #f1f6f3; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.chip-green { background: #d9f6ec; color: #07623f; }
+.chip-blue { background: #ddeafe; color: #1e478f; }
+.chip-gray { background: #eef2f0; color: var(--muted); }
+
+.tab {
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+.tab:hover { background: #fff; }
+.tab-active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 6px 16px -9px rgba(12, 166, 120, 0.9);
+}
+
+.score-input {
+  width: 2.6rem;
+  height: 2.6rem;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  border-radius: 0.65rem;
+  background: #f4f8f6;
+  border: 1.5px solid var(--line);
+  color: var(--text);
+  outline: none;
+  transition: all 0.12s ease;
+}
+.score-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(12, 166, 120, 0.18); }
+.score-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.field {
+  width: 100%;
+  border-radius: 0.75rem;
+  background: #f6faf8;
+  border: 1.5px solid var(--line);
+  color: var(--text);
+  padding: 0.65rem 0.85rem;
+  outline: none;
+}
+.field:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(12, 166, 120, 0.18); }
+
+::-webkit-scrollbar { height: 9px; width: 9px; }
+::-webkit-scrollbar-thumb { background: rgba(11, 90, 65, 0.2); border-radius: 99px; }

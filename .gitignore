@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# secretos sueltos
+pwd.txt
+_pwd_backup.txt
+
 # vercel
 .vercel
 

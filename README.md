@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏆 Fixture Mundial 2026 — en familia
 
-## Getting Started
+App de pronósticos del Mundial 2026 para jugar en familia. Cada uno carga sus
+resultados, la tabla de cada grupo se actualiza al instante y hay un ranking
+general. Hecha con **Next.js + TiDB (MySQL)**, lista para **Vercel**.
 
-First, run the development server:
+## ¿Cómo se juega?
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Cada partido tiene dos casilleros para poner los goles.
+- Al cargar tu pronóstico, **la tabla del grupo de arriba se recalcula sola**.
+- Podés editar tu pronóstico **hasta que el partido empieza** (después se cierra 🔒).
+- **Puntaje:** resultado exacto = **4 puntos** · acertar quién gana/empata = **2 puntos**.
+- Los resultados reales entran automáticamente todos los días (o los cargás a mano
+  desde el panel de admin).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Primer arranque (local)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Instalar dependencias:
+   ```bash
+   npm install
+   ```
+2. Las credenciales ya están en `.env.local` (TiDB, secretos, email de admin).
+   - El usuario que se registre con el email de `ADMIN_EMAIL` será el **administrador**.
+   - Para los resultados automáticos, conseguí una API key **gratuita** en
+     <https://www.football-data.org/client/register> y pegala en `FOOTBALL_DATA_API_KEY`.
+     (Si la dejás vacía, igual podés cargar los resultados a mano.)
+3. Crear las tablas y cargar equipos/partidos (ya se corrió una vez; volvé a correr si hace falta):
+   ```bash
+   npm run db:setup     # crea y siembra si está vacío
+   npm run db:reset     # borra todo y vuelve a sembrar
+   ```
+4. Levantar la app:
+   ```bash
+   npm run dev
+   ```
+   Abrí <http://localhost:3000>, registrate y a jugar.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Subir a Vercel
 
-## Learn More
+1. Subí el proyecto a un repo de GitHub.
+2. En Vercel: **New Project** → importá el repo.
+3. En **Settings → Environment Variables** cargá las mismas variables que están en
+   `.env.local`:
+   - `TIDB_HOST`, `TIDB_PORT`, `TIDB_USER`, `TIDB_PASSWORD`, `TIDB_DATABASE`
+   - `AUTH_SECRET`
+   - `CRON_SECRET`
+   - `FOOTBALL_DATA_API_KEY`
+   - `ADMIN_EMAIL`
+4. **Deploy**. El `vercel.json` ya deja programado el cron diario
+   (`/api/cron/sync` todos los días a las 06:00 UTC) que trae los resultados.
 
-To learn more about Next.js, take a look at the following resources:
+> En TiDB Cloud, en **Networking**, agregá el acceso público (`0.0.0.0/0`) o las IPs
+> de Vercel para que la app pueda conectarse desde la nube.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Fixture: grupos y eliminatorias
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+El fixture tiene dos pestañas: **Fase de grupos** y **Eliminatorias**. El cuadro de
+eliminatorias (16avos → final) sigue la estructura **oficial del Mundial 2026** y se
+**completa solo** a partir de los resultados reales: cuando termina la fase de grupos
+se ubican los 1º, 2º y los 8 mejores terceros en su llave correspondiente, y a medida
+que se juegan los partidos los ganadores avanzan de ronda automáticamente. Nadie tiene
+que cargar los cruces a mano.
 
-## Deploy on Vercel
+## Panel de administración (`/admin`, solo el admin)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Sincronizar ahora**: trae resultados reales desde la API y completa las llaves.
+- **Recalcular cuadro**: rehace las llaves a partir de los resultados actuales (por si hace falta).
+- **Cargar resultado real (manual)**: respaldo por si la API falla. Al guardar, se
+  recalculan los puntos y se avanzan las llaves. En eliminatorias, si hay empate, elegís
+  quién pasa (penales).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Estructura
+
+- `src/app` — páginas (`/` fixture, `/ranking`, `/admin`, `/login`, `/register`) y API.
+- `src/components` — UI (fixture en vivo, tablas, panel admin, navbar).
+- `src/lib` — conexión a TiDB, auth/sesiones, scoring, acceso a datos, sync con la API,
+  `bracket.ts` (cuadro oficial 2026 + resolución automática de llaves).
+- `scripts/setup-db.mjs` — esquema + carga inicial (48 equipos, 12 grupos, 104 partidos).
+- `scripts/migrate-knockout.mjs` — migra una base ya creada al cuadro oficial con códigos.
