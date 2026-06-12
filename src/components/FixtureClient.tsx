@@ -77,18 +77,15 @@ export default function FixtureClient({
     }, 600);
   }
 
-  // Resultados para la tabla: el pronóstico del usuario, o el real si el partido ya terminó.
-  function resultsFor(groupMatches: MatchView[]) {
-    return groupMatches.map((m) => {
-      const p = preds[m.id];
-      if (p && p.home !== "" && p.away !== "") {
-        return { home_team_id: m.home_team_id, away_team_id: m.away_team_id, home_score: Number(p.home), away_score: Number(p.away) };
-      }
-      if (m.status === "finished") {
-        return { home_team_id: m.home_team_id, away_team_id: m.away_team_id, home_score: m.home_score, away_score: m.away_score };
-      }
-      return { home_team_id: m.home_team_id, away_team_id: m.away_team_id, home_score: null, away_score: null };
-    });
+  // La tabla del grupo muestra SOLO los resultados reales (partidos ya jugados),
+  // no los pronósticos de cada uno.
+  function realResults(groupMatches: MatchView[]) {
+    return groupMatches.map((m) => ({
+      home_team_id: m.home_team_id,
+      away_team_id: m.away_team_id,
+      home_score: m.status === "finished" ? m.home_score : null,
+      away_score: m.status === "finished" ? m.away_score : null,
+    }));
   }
 
   const groups = useMemo(() => {
@@ -139,7 +136,7 @@ export default function FixtureClient({
       {tab === "grupos" && (
         <section className="grid lg:grid-cols-2 gap-5">
           {groups.map(({ letter, groupTeams, groupMatches }) => {
-            const standings = computeStandings(groupTeams, resultsFor(groupMatches));
+            const standings = computeStandings(groupTeams, realResults(groupMatches));
             return (
               <div key={letter} className="card card-top p-4">
                 <div className="flex items-center gap-2 mb-3">

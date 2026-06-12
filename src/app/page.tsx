@@ -19,8 +19,8 @@ export default async function HomePage() {
             Fixture · Mundial <span className="text-primary">2026</span> 🌎
           </h1>
           <p className="text-muted mt-1 text-sm">
-            Cargá tu pronóstico de cada partido. La tabla del grupo se actualiza al instante con lo
-            que pongas. Podés editar hasta que el partido empiece.
+            Cargá tu pronóstico de cada partido (podés editar hasta que empiece). La tabla de cada
+            grupo muestra los <b className="text-primary">resultados reales</b> del Mundial.
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
             <span className="chip chip-green">🎯 Resultado exacto = 4 pts</span>
