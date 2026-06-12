@@ -6,8 +6,10 @@ const AR_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC-3
 const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
-export function parseKickoffMs(kickoff: string | null): number | null {
+export function parseKickoffMs(kickoff: string | Date | null): number | null {
   if (!kickoff) return null;
+  // Defensivo: si alguna consulta devuelve un Date (mysql2) en vez de texto.
+  if (kickoff instanceof Date) return kickoff.getTime();
   const iso = kickoff.endsWith("Z") ? kickoff : kickoff.replace(" ", "T") + "Z";
   const ms = Date.parse(iso);
   return Number.isNaN(ms) ? null : ms;

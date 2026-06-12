@@ -63,7 +63,7 @@ export async function savePrediction(
   predAway: number
 ): Promise<{ ok: boolean; error?: string }> {
   const rows = await query<Match[]>(
-    "SELECT id, kickoff, status FROM matches WHERE id = ?",
+    "SELECT id, DATE_FORMAT(kickoff, '%Y-%m-%dT%H:%i:%s') AS kickoff, status FROM matches WHERE id = ?",
     [matchId]
   );
   const m = rows[0];
