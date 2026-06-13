@@ -34,6 +34,7 @@ export default function MatchRow({
   locked,
   status,
   onChange,
+  tag,
 }: {
   match: MatchView;
   homeValue: string;
@@ -41,6 +42,7 @@ export default function MatchRow({
   locked: boolean;
   status: SaveStatus;
   onChange: (home: string, away: string) => void;
+  tag?: string; // etiqueta opcional (ej. "Grupo J") que se muestra junto a la fecha
 }) {
   const homeName = match.home_team?.name ?? match.home_label ?? "Por definir";
   const awayName = match.away_team?.name ?? match.away_label ?? "Por definir";
@@ -54,7 +56,10 @@ export default function MatchRow({
   return (
     <div className="py-2.5 px-2 sm:px-3 rounded-xl hover:bg-[#f4f8f6] transition-colors">
       <div className="flex items-center justify-between text-[11px] text-muted mb-1.5 min-h-[16px]">
-        <span>{formatKickoff(match.kickoff)}</span>
+        <span className="flex items-center gap-2">
+          {formatKickoff(match.kickoff)}
+          {tag && <span className="chip chip-gray !py-0.5 !px-2 font-bold">{tag}</span>}
+        </span>
         <span className="flex items-center gap-2">
           {variant === "scored" && match.points != null && (
             <span

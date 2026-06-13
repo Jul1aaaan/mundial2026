@@ -38,7 +38,7 @@ export default function FixtureClient({
   teams: Team[];
   matches: MatchView[];
 }) {
-  const [tab, setTab] = useState<"grupos" | "llaves">("grupos");
+  const [tab, setTab] = useState<"fase" | "tablas" | "llaves">("fase");
   const [preds, setPreds] = useState<PredMap>(() => {
     const init: PredMap = {};
     for (const m of matches) {
@@ -106,7 +106,26 @@ export default function FixtureClient({
     })).filter((r) => r.list.length > 0);
   }, [matches]);
 
-  function row(m: MatchView) {
+  // Fecha (1/2/3) de cada partido de grupos: dentro de cada grupo, los 6 partidos
+  // ordenados por horario forman 3 pares = Fecha 1, 2 y 3.
+  const matchdayById = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const { groupMatches } of groups) {
+      groupMatches.forEach((m, i) => map.set(m.id, Math.floor(i / 2) + 1));
+    }
+    return map;
+  }, [groups]);
+
+  // Partidos de grupos en orden cronológico, agrupados por Fecha (mezclando todos los grupos).
+  const fases = useMemo(() => {
+    const all = matches.filter((m) => m.stage === "group");
+    return [1, 2, 3].map((fecha) => ({
+      fecha,
+      list: all.filter((m) => matchdayById.get(m.id) === fecha).sort(byKickoff),
+    }));
+  }, [matches, matchdayById]);
+
+  function row(m: MatchView, tag?: string) {
     const p = preds[m.id];
     return (
       <MatchRow
@@ -117,6 +136,7 @@ export default function FixtureClient({
         locked={isLockedClient(m)}
         status={status[m.id]}
         onChange={(h, a) => onChange(m.id, h, a)}
+        tag={tag}
       />
     );
   }
@@ -124,16 +144,36 @@ export default function FixtureClient({
   return (
     <div>
       {/* Tabs */}
-      <div className="flex gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-full w-fit mx-auto">
-        <button className={`tab ${tab === "grupos" ? "tab-active" : ""}`} onClick={() => setTab("grupos")}>
+      <div className="flex flex-wrap gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-full w-fit mx-auto">
+        <button className={`tab ${tab === "fase" ? "tab-active" : ""}`} onClick={() => setTab("fase")}>
           ⚽ Fase de grupos
+        </button>
+        <button className={`tab ${tab === "tablas" ? "tab-active" : ""}`} onClick={() => setTab("tablas")}>
+          📊 Tablas
         </button>
         <button className={`tab ${tab === "llaves" ? "tab-active" : ""}`} onClick={() => setTab("llaves")}>
           🏆 Eliminatorias
         </button>
       </div>
 
-      {tab === "grupos" && (
+      {/* Fase de grupos: todos los partidos en orden, separados por Fecha 1/2/3 */}
+      {tab === "fase" && (
+        <section className="space-y-5">
+          {fases.map(({ fecha, list }) => (
+            <div key={fecha} className="card card-top p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="chip chip-green">Fecha {fecha}</span>
+                <span className="text-xs text-muted">{list.length} partidos</span>
+              </div>
+              <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
+                {list.map((m) => row(m, `Grupo ${m.group_letter}`))}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {tab === "tablas" && (
         <section className="grid lg:grid-cols-2 gap-5">
           {groups.map(({ letter, groupTeams, groupMatches }) => {
             const standings = computeStandings(groupTeams, realResults(groupMatches));
@@ -190,7 +230,7 @@ export default function FixtureClient({
                   <span className="text-xs text-muted">{r.list.length} {r.list.length === 1 ? "partido" : "partidos"}</span>
                 </div>
                 <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
-                  {r.list.map(row)}
+                  {r.list.map((m) => row(m))}
                 </div>
               </div>
             ))}
