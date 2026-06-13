@@ -1,0 +1,23 @@
+name: Sincronizar resultados (cada hora)
+
+# Trae los resultados reales desde la API y completa las llaves, cada hora.
+# (Vercel gratis no permite cron cada hora; por eso lo dispara GitHub Actions.)
+
+on:
+  schedule:
+    - cron: "0 * * * *" # cada hora en punto (UTC)
+  workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al endpoint de sincronización
+        run: |
+          echo "Disparando sync..."
+          code=$(curl -s -o /tmp/out.json -w "%{http_code}" -m 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://mundial2026-gaznapios.vercel.app/api/cron/sync")
+          echo "HTTP $code"
+          cat /tmp/out.json
+          test "$code" = "200"
