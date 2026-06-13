@@ -27,4 +27,24 @@ export function formatKickoff(kickoff: string | null): string {
   return `${dia} ${num} ${mes} · ${hh}:${mm}`;
 }
 
+// Clave de día (YYYYMMDD) en hora argentina, para agrupar "los de hoy".
+export function arDayKey(ms: number): number {
+  const d = new Date(ms - AR_OFFSET_MS);
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+
+export function formatTimeAr(kickoff: string | Date | null): string {
+  const ms = parseKickoffMs(kickoff);
+  if (ms == null) return "";
+  const d = new Date(ms - AR_OFFSET_MS);
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+export function formatDateAr(kickoff: string | Date | null): string {
+  const ms = parseKickoffMs(kickoff);
+  if (ms == null) return "";
+  const d = new Date(ms - AR_OFFSET_MS);
+  return `${DIAS[d.getUTCDay()]} ${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`;
+}
+
 export const GROUP_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];

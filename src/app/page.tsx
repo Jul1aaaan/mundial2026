@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { getTeams, getMatchViews } from "@/lib/data";
 import NavBar from "@/components/NavBar";
 import FixtureClient from "@/components/FixtureClient";
+import UpcomingMatches from "@/components/UpcomingMatches";
 import Footer from "@/components/Footer";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,8 @@ export default async function HomePage() {
             <span className="chip chip-blue">✅ Acertar quién gana/empata = 2 pts</span>
           </div>
         </div>
+
+        <UpcomingMatches matches={matches} />
 
         <FixtureClient teams={teams} matches={matches} />
       </main>
