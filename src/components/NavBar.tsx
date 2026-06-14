@@ -19,14 +19,18 @@ export default function NavBar({ name, admin }: { name: string; admin: boolean }
   ];
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-white/85 backdrop-blur-md">
-      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-        <Link href="/" className="font-extrabold flex items-center gap-2 shrink-0 text-foreground">
+    <header
+      className="z-30 bg-white/90 backdrop-blur-md border-line
+                 fixed inset-x-0 bottom-0 border-t shadow-[0_-4px_16px_-8px_rgba(7,50,35,0.25)]
+                 sm:sticky sm:top-0 sm:bottom-auto sm:border-t-0 sm:border-b sm:shadow-none"
+    >
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-2 sm:gap-4">
+        <Link href="/" className="hidden sm:flex font-extrabold items-center gap-2 shrink-0 text-foreground">
           <span className="text-xl">⚽</span>
-          <span className="hidden sm:inline">Mundial <span className="text-primary">2026</span></span>
+          <span>Mundial <span className="text-primary">2026</span></span>
         </Link>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 flex-1 justify-around sm:flex-none sm:justify-start">
           {links.map((l) => {
             const active = pathname === l.href;
             return (

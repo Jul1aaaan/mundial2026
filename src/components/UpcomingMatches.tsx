@@ -46,7 +46,8 @@ export default function UpcomingMatches({ matches }: { matches: MatchView[] }) {
           const locked = isLockedClient(m);
           const hasPred = m.pred_home != null;
 
-          let badge = "";
+          // Cartelito de estado (arriba a la derecha).
+          let badge: string | null = null;
           let badgeClass = "chip-gray";
           if (finished) {
             badge = `Final ${m.home_score}-${m.away_score}`;
@@ -54,19 +55,16 @@ export default function UpcomingMatches({ matches }: { matches: MatchView[] }) {
           } else if (locked) {
             badge = "🔴 En juego";
             badgeClass = "chip-blue";
-          } else if (hasPred) {
-            badge = "✓ Pronosticado";
-            badgeClass = "chip-green";
-          } else {
+          } else if (!hasPred) {
             badge = "⏰ ¡Falta tu pronóstico!";
             badgeClass = "chip-blue";
           }
 
           return (
             <div key={m.id} className="p-2.5 rounded-lg border border-line bg-[#f9fbfa]">
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="font-bold text-muted">{formatTimeAr(m.kickoff)}</span>
-                <span className={`chip ${badgeClass} !py-0.5 !px-2`}>{badge}</span>
+              <div className="flex items-center justify-between text-xs mb-1.5 gap-2">
+                <span className="font-bold text-muted shrink-0">{formatTimeAr(m.kickoff)}</span>
+                {badge && <span className={`chip ${badgeClass} !py-0.5 !px-2`}>{badge}</span>}
               </div>
               <div className="flex items-center gap-2">
                 <Flag code={m.home_team!.code} size={16} />
@@ -75,6 +73,13 @@ export default function UpcomingMatches({ matches }: { matches: MatchView[] }) {
                 <span className="truncate text-sm font-semibold flex-1 text-right">{m.away_team!.name}</span>
                 <Flag code={m.away_team!.code} size={16} />
               </div>
+              {hasPred && (
+                <div className="mt-1.5 text-center">
+                  <span className="chip chip-green !py-0.5">
+                    Tu pronóstico: <b className="ml-1">{m.pred_home}-{m.pred_away}</b>
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
