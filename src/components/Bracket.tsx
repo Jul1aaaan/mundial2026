@@ -1,6 +1,6 @@
 "use client";
 import type { MatchView } from "@/lib/types";
-import { matchBoxState } from "@/lib/matchBox";
+import { matchBoxState, pointsBadgeClass } from "@/lib/matchBox";
 import { isLockedClient } from "@/lib/clientLock";
 import Flag from "./Flag";
 
@@ -49,8 +49,8 @@ function BracketMatch({
     <div className="relative w-[150px] rounded-lg border border-line bg-surface shadow-sm overflow-hidden">
       {status === "saved" && <span className="absolute top-0.5 right-0.5 text-[9px] text-emerald-600 z-10">✓</span>}
       {s.variant === "scored" && m.points != null && (
-        <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 rounded bg-emerald-600 text-white shadow z-10">
-          +{m.points}
+        <span className={`absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 rounded shadow z-10 ${pointsBadgeClass(m.points)}`}>
+          {m.points === 0 ? "0" : `+${m.points}`}
         </span>
       )}
       <div className="flex items-center gap-1.5 px-2 py-1">

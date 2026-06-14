@@ -9,7 +9,7 @@ general. Hecha con **Next.js + TiDB (MySQL)**, lista para **Vercel**.
 - Cada partido tiene dos casilleros para poner los goles.
 - Al cargar tu pronóstico, **la tabla del grupo de arriba se recalcula sola**.
 - Podés editar tu pronóstico **hasta que el partido empieza** (después se cierra 🔒).
-- **Puntaje (aditivo):** acertar quién gana/empata = **2 pts** · goles exactos de un equipo = **+1 pt** (cada uno) · resultado exacto = **4 pts** (2 + 1 + 1).
+- **Puntaje:** quién gana/empata = **5** · diferencia de gol exacta = **+2** · goles exactos de un equipo = **+1** (cada uno) · resultado perfecto = **10**. (Valores posibles: 0, 1, 5, 6, 7, 10.)
 - Los resultados reales entran automáticamente todos los días (o los cargás a mano
   desde el panel de admin).
 

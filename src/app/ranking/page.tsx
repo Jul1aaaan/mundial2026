@@ -18,8 +18,8 @@ export default async function RankingPage() {
         <div className="card card-top p-5 mb-6">
           <h1 className="text-2xl font-extrabold">Ranking de la familia 🏅</h1>
           <p className="text-muted mt-1 text-sm">
-            Se ordena por puntos. Acertar quién gana/empata = 2, goles exactos de un equipo = +1 c/u,
-            resultado exacto = 4.
+            Se ordena por puntos. Quién gana/empata = 5, diferencia de gol exacta = +2, goles exactos
+            de un equipo = +1 c/u, resultado perfecto = 10.
           </p>
         </div>
 
@@ -29,7 +29,7 @@ export default async function RankingPage() {
               <tr className="text-muted text-xs uppercase border-b border-line">
                 <th className="text-left font-semibold py-3 pl-4 w-12">#</th>
                 <th className="text-left font-semibold py-3">Jugador</th>
-                <th className="font-semibold w-16" title="Resultados exactos (4 pts)">Exactos</th>
+                <th className="font-semibold w-16" title="Resultados perfectos (10 pts)">Perfectos</th>
                 <th className="font-semibold w-16 hidden sm:table-cell" title="Pronósticos que sumaron puntos">Aciertos</th>
                 <th className="font-semibold w-20 pr-4">Puntos</th>
               </tr>

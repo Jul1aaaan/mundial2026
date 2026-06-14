@@ -1,7 +1,7 @@
 "use client";
 import type { MatchView } from "@/lib/types";
 import { formatKickoff } from "@/lib/format";
-import { matchBoxState } from "@/lib/matchBox";
+import { matchBoxState, pointsBadgeClass } from "@/lib/matchBox";
 import Flag from "./Flag";
 
 type SaveStatus = "saving" | "saved" | "error" | undefined;
@@ -62,17 +62,7 @@ export default function MatchRow({
         </span>
         <span className="flex items-center gap-2">
           {variant === "scored" && match.points != null && (
-            <span
-              className={`px-1.5 py-0.5 rounded-md font-bold ${
-                match.points >= 3
-                  ? "bg-emerald-100 text-emerald-700"
-                  : match.points === 2
-                  ? "bg-blue-100 text-blue-700"
-                  : match.points === 1
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-red-100 text-red-600"
-              }`}
-            >
+            <span className={`px-1.5 py-0.5 rounded-md font-bold ${pointsBadgeClass(match.points)}`}>
               {match.points === 0 ? "0 pts" : `+${match.points} pts`}
             </span>
           )}

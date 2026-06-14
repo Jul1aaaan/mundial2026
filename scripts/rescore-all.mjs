@@ -3,8 +3,10 @@
 import mysql from "mysql2/promise";
 
 function pts(ph, pa, rh, ra) {
+  if (ph === rh && pa === ra) return 10; // resultado perfecto
   let p = 0;
-  if (Math.sign(ph - pa) === Math.sign(rh - ra)) p += 2;
+  if (Math.sign(ph - pa) === Math.sign(rh - ra)) p += 5;
+  if (ph - pa === rh - ra) p += 2; // diferencia de gol exacta
   if (ph === rh) p += 1;
   if (pa === ra) p += 1;
   return p;

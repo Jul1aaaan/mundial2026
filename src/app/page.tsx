@@ -24,9 +24,10 @@ export default async function HomePage() {
             grupo muestra los <b className="text-primary">resultados reales</b> del Mundial.
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
-            <span className="chip chip-blue">✅ Acertás quién gana/empata = 2 pts</span>
-            <span className="chip chip-amber">⚽ Goles exactos de un equipo = +1 pt c/u</span>
-            <span className="chip chip-green">🎯 Resultado exacto = 4 pts</span>
+            <span className="chip chip-blue">✅ Quién gana/empata = 5 pts</span>
+            <span className="chip chip-amber">⚽ Goles exactos de un equipo = +1 c/u</span>
+            <span className="chip chip-blue">📐 Diferencia de gol exacta = +2</span>
+            <span className="chip chip-green">🎯 Resultado perfecto = 10 pts</span>
           </div>
         </div>
 
