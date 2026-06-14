@@ -86,7 +86,7 @@ export type RankRow = {
   name: string;
   pts: number;
   exactos: number;
-  signos: number;
+  aciertos: number;
   jugados: number;
   total: number;
 };
@@ -96,7 +96,7 @@ export async function getRanking(): Promise<RankRow[]> {
     `SELECT u.id, u.name,
             COALESCE(SUM(p.points), 0)                              AS pts,
             COALESCE(SUM(p.points = 4), 0)                          AS exactos,
-            COALESCE(SUM(p.points = 2), 0)                          AS signos,
+            COALESCE(SUM(p.points > 0), 0)                          AS aciertos,
             COALESCE(SUM(p.points IS NOT NULL), 0)                  AS jugados,
             COUNT(p.id)                                             AS total
      FROM users u

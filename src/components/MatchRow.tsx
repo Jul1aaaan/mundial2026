@@ -64,10 +64,12 @@ export default function MatchRow({
           {variant === "scored" && match.points != null && (
             <span
               className={`px-1.5 py-0.5 rounded-md font-bold ${
-                match.points === 4
+                match.points >= 3
                   ? "bg-emerald-100 text-emerald-700"
                   : match.points === 2
                   ? "bg-blue-100 text-blue-700"
+                  : match.points === 1
+                  ? "bg-amber-100 text-amber-700"
                   : "bg-red-100 text-red-600"
               }`}
             >

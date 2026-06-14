@@ -1,18 +1,22 @@
 import type { StandingRow, Team } from "./types";
 
-// Reglas de puntaje pedidas:
-//   - Resultado exacto: 4 puntos
-//   - Acierto de signo (gana/empata/pierde): 2 puntos
-//   - Si no, 0
+// Reglas de puntaje (aditivas):
+//   - Acertar quién gana/empata/pierde (signo): +2
+//   - Acertar los goles exactos del local: +1
+//   - Acertar los goles exactos del visitante: +1
+// Resultado exacto = 2 + 1 + 1 = 4. Acertar el signo + los goles de un equipo = 3.
+// Acertar solo los goles de un equipo (errando el signo) = 1.
 export function predictionPoints(
   predHome: number,
   predAway: number,
   realHome: number,
   realAway: number
 ): number {
-  if (predHome === realHome && predAway === realAway) return 4;
-  if (Math.sign(predHome - predAway) === Math.sign(realHome - realAway)) return 2;
-  return 0;
+  let pts = 0;
+  if (Math.sign(predHome - predAway) === Math.sign(realHome - realAway)) pts += 2;
+  if (predHome === realHome) pts += 1;
+  if (predAway === realAway) pts += 1;
+  return pts;
 }
 
 type ResultLike = {

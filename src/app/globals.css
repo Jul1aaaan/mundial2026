@@ -91,6 +91,7 @@ body {
 .chip-green { background: #d9f6ec; color: #07623f; }
 .chip-blue { background: #ddeafe; color: #1e478f; }
 .chip-gray { background: #eef2f0; color: var(--muted); }
+.chip-amber { background: #fef3c7; color: #92400e; }
 
 .tab {
   padding: 0.55rem 1.1rem;
