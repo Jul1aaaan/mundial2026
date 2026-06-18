@@ -11,6 +11,21 @@ export async function getTeams(): Promise<Team[]> {
   );
 }
 
+export async function getUsers(): Promise<
+  { id: number; name: string; email: string; is_admin: number }[]
+> {
+  return query("SELECT id, name, email, is_admin FROM users ORDER BY is_admin DESC, name ASC");
+}
+
+// Cambia la contraseña de un usuario (uso desde el panel admin).
+export async function setUserPassword(userId: number, passwordHash: string): Promise<boolean> {
+  const res = await query<{ affectedRows: number }>(
+    "UPDATE users SET password_hash = ? WHERE id = ?",
+    [passwordHash, userId]
+  );
+  return res.affectedRows > 0;
+}
+
 export async function getMatches(): Promise<Match[]> {
   return query<Match[]>(
     `SELECT id, stage, group_letter, matchday, round_name, home_team_id, away_team_id,

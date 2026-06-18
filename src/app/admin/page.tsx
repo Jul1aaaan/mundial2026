@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { getTeams, getMatches } from "@/lib/data";
+import { getUsers } from "@/lib/data";
 import NavBar from "@/components/NavBar";
 import AdminClient from "@/components/AdminClient";
 import Footer from "@/components/Footer";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const user = await requireAdmin();
-  const [teams, matches] = await Promise.all([getTeams(), getMatches()]);
+  const users = await getUsers();
 
   return (
     <>
@@ -16,9 +16,9 @@ export default async function AdminPage() {
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6">
         <div className="card card-top p-5 mb-6">
           <h1 className="text-2xl font-extrabold">Panel de administración 🛠️</h1>
-          <p className="text-muted mt-1 text-sm">Solo vos ves esto. Los resultados completan todo solos.</p>
+          <p className="text-muted mt-1 text-sm">Solo vos ves esto. Los resultados se completan solos.</p>
         </div>
-        <AdminClient teams={teams} matches={matches} />
+        <AdminClient users={users} />
       </main>
       <Footer />
     </>
