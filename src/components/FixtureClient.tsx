@@ -1,9 +1,9 @@
 "use client";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { MatchView, Team } from "@/lib/types";
 import { computeStandings } from "@/lib/scoring";
 import { isLockedClient } from "@/lib/clientLock";
-import { parseKickoffMs } from "@/lib/format";
+import { parseKickoffMs, arDayKey } from "@/lib/format";
 import StandingsTable from "./StandingsTable";
 import MatchRow from "./MatchRow";
 import Bracket from "./Bracket";
@@ -39,6 +39,11 @@ export default function FixtureClient({
   matches: MatchView[];
 }) {
   const [tab, setTab] = useState<"fase" | "tablas" | "llaves">("fase");
+  // Filtro de la pestaña "Fase de grupos": Próximos (de hoy en adelante) o Todos.
+  const [faseScope, setFaseScope] = useState<"proximos" | "todos">("proximos");
+  // Reloj del cliente (se setea al montar para no romper la hidratación).
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => setNow(Date.now()), []);
   const [preds, setPreds] = useState<PredMap>(() => {
     const init: PredMap = {};
     for (const m of matches) {
@@ -157,21 +162,62 @@ export default function FixtureClient({
       </div>
 
       {/* Fase de grupos: todos los partidos en orden, separados por Fecha 1/2/3 */}
-      {tab === "fase" && (
-        <section className="space-y-5">
-          {fases.map(({ fecha, list }) => (
-            <div key={fecha} className="card card-top p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="chip chip-green">Fecha {fecha}</span>
-                <span className="text-xs text-muted">{list.length} partidos</span>
-              </div>
-              <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
-                {list.map((m) => row(m, `Grupo ${m.group_letter}`))}
-              </div>
+      {tab === "fase" && (() => {
+        const todayKey = now != null ? arDayKey(now) : null;
+        const view = fases
+          .map(({ fecha, list }) => ({
+            fecha,
+            list:
+              faseScope === "proximos" && todayKey != null
+                ? list.filter((m) => {
+                    const ms = parseKickoffMs(m.kickoff);
+                    return ms != null && arDayKey(ms) >= todayKey;
+                  })
+                : list,
+          }))
+          .filter((f) => f.list.length > 0);
+
+        return (
+          <section className="space-y-5">
+            <div className="flex items-center justify-center gap-2 -mt-1">
+              <button
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
+                  faseScope === "proximos" ? "bg-primary text-white shadow-sm" : "bg-white border border-line text-muted"
+                }`}
+                onClick={() => setFaseScope("proximos")}
+              >
+                📅 De hoy en adelante
+              </button>
+              <button
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
+                  faseScope === "todos" ? "bg-primary text-white shadow-sm" : "bg-white border border-line text-muted"
+                }`}
+                onClick={() => setFaseScope("todos")}
+              >
+                Todos
+              </button>
             </div>
-          ))}
-        </section>
-      )}
+
+            {view.length === 0 ? (
+              <div className="card p-6 text-center text-muted text-sm">
+                No quedan partidos de grupos por jugar. Tocá <b>Todos</b> para ver los jugados, o mirá las Eliminatorias.
+              </div>
+            ) : (
+              view.map(({ fecha, list }) => (
+                <div key={fecha} className="card card-top p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="chip chip-green">Fecha {fecha}</span>
+                    <span className="text-xs text-muted">{list.length} partidos</span>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
+                    {list.map((m) => row(m, `Grupo ${m.group_letter}`))}
+                  </div>
+                </div>
+              ))
+            )}
+          </section>
+        );
+      })()}
 
       {tab === "tablas" && (
         <section className="grid lg:grid-cols-2 gap-5">
