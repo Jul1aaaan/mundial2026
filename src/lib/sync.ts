@@ -95,10 +95,17 @@ export async function syncResults(): Promise<SyncResult> {
 
   // Índice de NUESTROS partidos por pareja de códigos (no finalizados, con equipos definidos).
   const ours = await query<
-    { id: number; home_code: string; away_code: string; home_team_id: number; away_team_id: number; status: string }[]
+    {
+      id: number; home_code: string; away_code: string;
+      home_team_id: number; away_team_id: number; status: string;
+      kickoff: string | null; external_id: string | null;
+      home_score: number | null; away_score: number | null;
+    }[]
   >(
     `SELECT m.id, th.code AS home_code, ta.code AS away_code,
-            m.home_team_id, m.away_team_id, m.status
+            m.home_team_id, m.away_team_id, m.status,
+            DATE_FORMAT(m.kickoff, '%Y-%m-%d %H:%i:%s') AS kickoff,
+            m.external_id, m.home_score, m.away_score
      FROM matches m
      JOIN teams th ON th.id = m.home_team_id
      JOIN teams ta ON ta.id = m.away_team_id`
@@ -121,24 +128,33 @@ export async function syncResults(): Promise<SyncResult> {
     if (!candidates || candidates.length === 0) { unmapped++; continue; }
     const target = candidates.find((c) => c.status !== "finished") ?? candidates[0];
 
-    // Actualizar fecha real + id externo siempre.
+    // Actualizar fecha real + id externo SOLO si cambió (evita ~70 escrituras por corrida).
     const kickoff = am.utcDate ? am.utcDate.replace("T", " ").replace("Z", "").slice(0, 19) : null;
-    await query("UPDATE matches SET kickoff = ?, external_id = ? WHERE id = ?", [kickoff, String(am.id), target.id]);
-    datesUpdated++;
+    const extId = String(am.id);
+    if (kickoff !== target.kickoff || extId !== (target.external_id ?? "")) {
+      await query("UPDATE matches SET kickoff = ?, external_id = ? WHERE id = ?", [kickoff, extId, target.id]);
+      datesUpdated++;
+    }
 
-    // Cargar resultado si el partido terminó.
+    // Cargar resultado si el partido terminó Y el resultado es nuevo o cambió.
     const ft = am.score?.fullTime;
     if (am.status === "FINISHED" && ft?.home != null && ft?.away != null) {
       // Reorientar los goles según quién es local en nuestro registro.
       const homeIsApiHome = target.home_code === hc;
       const homeScore = homeIsApiHome ? ft.home : ft.away;
       const awayScore = homeIsApiHome ? ft.away : ft.home;
-      // Ganador (para eliminatorias definidas por penales).
-      let winnerTeamId: number | null = null;
-      if (am.score?.winner === "HOME_TEAM") winnerTeamId = homeIsApiHome ? target.home_team_id : target.away_team_id;
-      else if (am.score?.winner === "AWAY_TEAM") winnerTeamId = homeIsApiHome ? target.away_team_id : target.home_team_id;
-      await setMatchResult(target.id, homeScore, awayScore, winnerTeamId, false);
-      resultsApplied++;
+      const changed =
+        target.status !== "finished" ||
+        target.home_score !== homeScore ||
+        target.away_score !== awayScore;
+      if (changed) {
+        // Ganador (para eliminatorias definidas por penales).
+        let winnerTeamId: number | null = null;
+        if (am.score?.winner === "HOME_TEAM") winnerTeamId = homeIsApiHome ? target.home_team_id : target.away_team_id;
+        else if (am.score?.winner === "AWAY_TEAM") winnerTeamId = homeIsApiHome ? target.away_team_id : target.home_team_id;
+        await setMatchResult(target.id, homeScore, awayScore, winnerTeamId, false);
+        resultsApplied++;
+      }
     }
   }
 

@@ -15,7 +15,7 @@ jobs:
       - name: Llamar al endpoint de sincronización
         run: |
           echo "Disparando sync..."
-          code=$(curl -s -o /tmp/out.json -w "%{http_code}" -m 60 \
+          code=$(curl -s -o /tmp/out.json -w "%{http_code}" -m 90 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "https://mundial2026-gaznapios.vercel.app/api/cron/sync")
           echo "HTTP $code"
