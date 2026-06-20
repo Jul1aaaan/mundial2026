@@ -208,7 +208,7 @@ export default function FixtureClient({
         return (
           <section className="space-y-5">
             <div className="flex items-center justify-center gap-2 -mt-1">
-              {toggleBtn("proximos", "📅 De hoy en adelante")}
+              {toggleBtn("proximos", "📅 Próximos partidos")}
               {toggleBtn("jugados", "✅ Jugados")}
             </div>
 

@@ -2,7 +2,6 @@ import { requireUser } from "@/lib/auth";
 import { getTeams, getMatchViews, getRanking } from "@/lib/data";
 import NavBar from "@/components/NavBar";
 import FixtureClient from "@/components/FixtureClient";
-import UpcomingMatches from "@/components/UpcomingMatches";
 import UserStats from "@/components/UserStats";
 import Footer from "@/components/Footer";
 
@@ -28,8 +27,6 @@ export default async function HomePage() {
             <UserStats ranking={ranking} userId={user.uid} name={user.name} />
           </div>
         </div>
-
-        <UpcomingMatches matches={matches} />
 
         <FixtureClient teams={teams} matches={matches} />
       </main>
