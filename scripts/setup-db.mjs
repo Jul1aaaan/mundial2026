@@ -35,6 +35,7 @@ await conn.query(`
     name VARCHAR(80) NOT NULL,
     password_hash VARCHAR(120) NOT NULL,
     is_admin TINYINT(1) NOT NULL DEFAULT 0,
+    prev_position INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 

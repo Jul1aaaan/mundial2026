@@ -7,6 +7,15 @@ export const dynamic = "force-dynamic";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
+// Flechita de movimiento respecto a la posición anterior.
+function Mov({ prev, current }: { prev: number | null; current: number }) {
+  if (prev == null) return <span className="text-muted/50 text-xs" title="Sin cambios">–</span>;
+  const d = prev - current; // positivo = subió
+  if (d > 0) return <span className="text-emerald-600 text-xs font-bold" title={`Subió ${d}`}>▲{d}</span>;
+  if (d < 0) return <span className="text-red-500 text-xs font-bold" title={`Bajó ${-d}`}>▼{-d}</span>;
+  return <span className="text-muted/50 text-xs" title="Se mantuvo">–</span>;
+}
+
 export default async function RankingPage() {
   const user = await requireUser();
   const rows = await getRanking();
@@ -30,7 +39,7 @@ export default async function RankingPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-muted text-xs uppercase border-b border-line">
-                <th className="text-left font-semibold py-3 pl-4 w-12">#</th>
+                <th className="text-left font-semibold py-3 pl-4 w-20">#</th>
                 <th className="text-left font-semibold py-3">Jugador</th>
                 <th className="font-semibold w-16" title="Resultados perfectos (10 pts)">Perfectos</th>
                 <th className="font-semibold w-16 hidden sm:table-cell" title="Pronósticos que sumaron puntos">Aciertos</th>
@@ -42,7 +51,12 @@ export default async function RankingPage() {
                 const me = r.id === user.uid;
                 return (
                   <tr key={r.id} className={`border-b border-line ${me ? "bg-emerald-50" : ""}`}>
-                    <td className="py-3 pl-4 text-lg">{MEDALS[i] ?? <span className="text-muted text-sm">{i + 1}</span>}</td>
+                    <td className="py-3 pl-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-lg">{MEDALS[i] ?? <span className="text-muted text-sm">{i + 1}</span>}</span>
+                        <Mov prev={r.prev_position} current={i + 1} />
+                      </div>
+                    </td>
                     <td className="py-3 font-semibold">
                       {r.name}
                       {me && <span className="ml-2 text-xs text-primary font-bold">(vos)</span>}

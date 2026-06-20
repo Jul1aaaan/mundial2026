@@ -1,8 +1,8 @@
+import { Fragment } from "react";
 import type { RankRow } from "@/lib/data";
 
-const pts = (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`;
-
-// Resumen personal del usuario: puntos, posición y distancias en el ranking.
+// Resumen personal: saludo + posición. En celular, un mini-pantallazo del ranking
+// (1º, el de arriba, vos y el de abajo) como barritas.
 export default function UserStats({
   ranking,
   userId,
@@ -15,69 +15,46 @@ export default function UserStats({
   const idx = ranking.findIndex((r) => r.id === userId);
   if (idx === -1) return null;
 
-  const me = ranking[idx];
   const total = ranking.length;
   const pos = idx + 1;
-  const first = ranking[0];
 
-  // El más cercano por ARRIBA que tenga ESTRICTAMENTE más puntos (saltea los empatados).
-  let tIdx = idx - 1;
-  while (tIdx >= 0 && ranking[tIdx].pts === me.pts) tIdx--;
-  const target = tIdx >= 0 ? ranking[tIdx] : null;
-  const gapTarget = target ? target.pts - me.pts : 0;
-  const gapFirst = first.pts - me.pts;
-
-  const below = idx < total - 1 ? ranking[idx + 1] : null;
-  const gapBelow = below ? me.pts - below.pts : 0;
-
-  // Si nadie arriba tiene más puntos, estás en la cima (solo o compartida).
-  const tiedAtTop = !target && (idx > 0 || (!!below && below.pts === me.pts));
+  // Filas a mostrar en el mini-ranking: 1º, el de arriba, vos y el de abajo (sin repetir).
+  const wanted = [...new Set([0, idx - 1, idx, idx + 1].filter((i) => i >= 0 && i < total))].sort(
+    (a, b) => a - b
+  );
 
   return (
     <div className="md:text-right w-full md:w-auto">
       <div className="flex items-center gap-x-3 gap-y-1 flex-wrap md:justify-end">
         <span className="text-xl sm:text-2xl font-extrabold">Hola, {name} 👋</span>
-        <span className="text-3xl font-extrabold text-primary leading-none">
-          {me.pts}
-          <span className="text-sm font-bold text-muted"> pts</span>
-        </span>
         <span className="chip chip-green">
           {pos}º de {total}
         </span>
       </div>
 
-      <div className="mt-2 space-y-0.5 text-sm text-muted">
-        {!target ? (
-          <p className="font-semibold text-primary">
-            {tiedAtTop ? "🥇 ¡Compartís la punta! A no relajarse 😎" : "🥇 ¡Vas primero! A no relajarse 😎"}
-          </p>
-        ) : (
-          <>
-            <p>
-              Te faltan <b className="text-foreground">{pts(gapTarget)}</b> para pasar a{" "}
-              <b className="text-foreground">{target.name}</b>
-              {tIdx === 0 ? " y quedar 1º 🥇" : ""}.
-            </p>
-            {tIdx > 0 && (
-              <p>
-                Estás a <b className="text-foreground">{pts(gapFirst)}</b> del 1º (
-                <b className="text-foreground">{first.name}</b>).
-              </p>
-            )}
-          </>
-        )}
-
-        {below &&
-          (gapBelow === 0 ? (
-            <p>
-              ¡Ojo! Estás empatado con <b className="text-foreground">{below.name}</b>, te pisa los talones 👀
-            </p>
-          ) : (
-            <p>
-              ¡Cuidado! A <b className="text-foreground">{below.name}</b> le faltan{" "}
-              <b className="text-foreground">{pts(gapBelow)}</b> para alcanzarte 👀
-            </p>
-          ))}
+      {/* Mini-ranking, solo en celular */}
+      <div className="md:hidden mt-3 space-y-1 text-left">
+        {wanted.map((i, k) => {
+          const gap = k > 0 && i - wanted[k - 1] > 1;
+          const isMe = i === idx;
+          return (
+            <Fragment key={i}>
+              {gap && <div className="text-center text-muted text-xs leading-none">⋮</div>}
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
+                  isMe ? "bg-primary/15 border border-primary/40 font-bold" : "bg-[#f4f8f6]"
+                }`}
+              >
+                <span className="w-7 text-center text-muted font-bold shrink-0">{i + 1}º</span>
+                <span className="truncate flex-1">
+                  {ranking[i].name}
+                  {isMe ? " (vos)" : ""}
+                </span>
+                {i === 0 && <span className="shrink-0">🥇</span>}
+              </div>
+            </Fragment>
+          );
+        })}
       </div>
     </div>
   );

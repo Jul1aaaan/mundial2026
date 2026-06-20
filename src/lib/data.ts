@@ -104,11 +104,12 @@ export type RankRow = {
   aciertos: number;
   jugados: number;
   total: number;
+  prev_position: number | null;
 };
 
 export async function getRanking(): Promise<RankRow[]> {
   return query<RankRow[]>(
-    `SELECT u.id, u.name,
+    `SELECT u.id, u.name, u.prev_position,
             COALESCE(SUM(p.points), 0)                              AS pts,
             COALESCE(SUM(p.points = 10), 0)                         AS exactos,
             COALESCE(SUM(p.points > 0), 0)                          AS aciertos,
@@ -116,9 +117,16 @@ export async function getRanking(): Promise<RankRow[]> {
             COUNT(p.id)                                             AS total
      FROM users u
      LEFT JOIN predictions p ON p.user_id = u.id
-     GROUP BY u.id, u.name
+     GROUP BY u.id, u.name, u.prev_position
      ORDER BY pts DESC, exactos DESC, u.name ASC`
   );
+}
+
+// Guarda la posición actual de cada usuario como "posición anterior" (para las flechitas).
+export async function snapshotPositions(positions: Map<number, number>): Promise<void> {
+  for (const [userId, pos] of positions) {
+    await query("UPDATE users SET prev_position = ? WHERE id = ?", [pos, userId]);
+  }
 }
 
 // Carga (o corrige) el resultado real de un partido y recalcula puntos + cuadro.
