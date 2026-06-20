@@ -7,12 +7,10 @@ export const dynamic = "force-dynamic";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-// Flechita de movimiento respecto a la posición anterior.
-function Mov({ prev, current }: { prev: number | null; current: number }) {
-  if (prev == null) return <span className="text-muted/50 text-xs" title="Sin cambios">–</span>;
-  const d = prev - current; // positivo = subió
-  if (d > 0) return <span className="text-emerald-600 text-xs font-bold" title={`Subió ${d}`}>▲{d}</span>;
-  if (d < 0) return <span className="text-red-500 text-xs font-bold" title={`Bajó ${-d}`}>▼{-d}</span>;
+// Flechita de movimiento por efecto del último partido (+ subió, - bajó).
+function Mov({ delta }: { delta: number }) {
+  if (delta > 0) return <span className="text-emerald-600 text-xs font-bold" title={`Subió ${delta}`}>▲{delta}</span>;
+  if (delta < 0) return <span className="text-red-500 text-xs font-bold" title={`Bajó ${-delta}`}>▼{-delta}</span>;
   return <span className="text-muted/50 text-xs" title="Se mantuvo">–</span>;
 }
 
@@ -54,7 +52,7 @@ export default async function RankingPage() {
                     <td className="py-3 pl-4">
                       <div className="flex items-center gap-1.5">
                         <span className="text-lg">{MEDALS[i] ?? <span className="text-muted text-sm">{i + 1}</span>}</span>
-                        <Mov prev={r.prev_position} current={i + 1} />
+                        <Mov delta={r.delta} />
                       </div>
                     </td>
                     <td className="py-3 font-semibold">

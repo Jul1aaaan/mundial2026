@@ -104,29 +104,77 @@ export type RankRow = {
   aciertos: number;
   jugados: number;
   total: number;
-  prev_position: number | null;
+  delta: number; // posiciones que subió (+) o bajó (-) por efecto del último partido
 };
 
+const cmp = (a: { pts: number; exactos: number; name: string }, b: typeof a) =>
+  b.pts - a.pts || b.exactos - a.exactos || a.name.localeCompare(b.name);
+
 export async function getRanking(): Promise<RankRow[]> {
-  return query<RankRow[]>(
-    `SELECT u.id, u.name, u.prev_position,
-            COALESCE(SUM(p.points), 0)                              AS pts,
-            COALESCE(SUM(p.points = 10), 0)                         AS exactos,
-            COALESCE(SUM(p.points > 0), 0)                          AS aciertos,
-            COALESCE(SUM(p.points IS NOT NULL), 0)                  AS jugados,
-            COUNT(p.id)                                             AS total
+  // El último partido finalizado: el movimiento de las flechitas es el efecto de ESE partido.
+  const last = await query<{ id: number }[]>(
+    "SELECT id FROM matches WHERE status = 'finished' AND home_score IS NOT NULL ORDER BY kickoff DESC, id DESC LIMIT 1"
+  );
+  const lastId = last[0]?.id ?? 0;
+
+  const raw = await query<Record<string, unknown>[]>(
+    `SELECT u.id, u.name,
+            COALESCE(SUM(p.points), 0)                                              AS pts,
+            COALESCE(SUM(p.points = 10), 0)                                         AS exactos,
+            COALESCE(SUM(p.points > 0), 0)                                          AS aciertos,
+            COALESCE(SUM(p.points IS NOT NULL), 0)                                  AS jugados,
+            COUNT(p.id)                                                             AS total,
+            COALESCE(SUM(CASE WHEN p.match_id <> ? THEN p.points ELSE 0 END), 0)    AS prev_pts,
+            COALESCE(SUM(CASE WHEN p.match_id <> ? THEN (p.points = 10) ELSE 0 END), 0) AS prev_exactos
      FROM users u
      LEFT JOIN predictions p ON p.user_id = u.id
-     GROUP BY u.id, u.name, u.prev_position
-     ORDER BY pts DESC, exactos DESC, u.name ASC`
+     GROUP BY u.id, u.name`,
+    [lastId, lastId]
   );
+
+  const rows = raw.map((r) => ({
+    id: Number(r.id),
+    name: String(r.name),
+    pts: Number(r.pts),
+    exactos: Number(r.exactos),
+    aciertos: Number(r.aciertos),
+    jugados: Number(r.jugados),
+    total: Number(r.total),
+    prev_pts: Number(r.prev_pts),
+    prev_exactos: Number(r.prev_exactos),
+  }));
+
+  // Posiciones SIN el último partido (para comparar).
+  const prevOrder = [...rows].sort((a, b) =>
+    cmp({ pts: a.prev_pts, exactos: a.prev_exactos, name: a.name }, { pts: b.prev_pts, exactos: b.prev_exactos, name: b.name })
+  );
+  const prevPos = new Map(prevOrder.map((r, i) => [r.id, i + 1]));
+
+  // Posiciones actuales (con todos los partidos).
+  const current = [...rows].sort(cmp);
+  return current.map((r, i) => ({
+    id: r.id,
+    name: r.name,
+    pts: r.pts,
+    exactos: r.exactos,
+    aciertos: r.aciertos,
+    jugados: r.jugados,
+    total: r.total,
+    delta: prevPos.get(r.id)! - (i + 1), // + subió, - bajó
+  }));
 }
 
-// Guarda la posición actual de cada usuario como "posición anterior" (para las flechitas).
-export async function snapshotPositions(positions: Map<number, number>): Promise<void> {
-  for (const [userId, pos] of positions) {
-    await query("UPDATE users SET prev_position = ? WHERE id = ?", [pos, userId]);
-  }
+// Pronósticos de un partido (para el detalle): quién puso qué y cuántos puntos sumó.
+export async function getMatchPredictions(
+  matchId: number
+): Promise<{ name: string; pred_home: number; pred_away: number; points: number | null }[]> {
+  return query(
+    `SELECT u.name, p.pred_home, p.pred_away, p.points
+     FROM predictions p JOIN users u ON u.id = p.user_id
+     WHERE p.match_id = ?
+     ORDER BY p.points DESC, u.name ASC`,
+    [matchId]
+  );
 }
 
 // Carga (o corrige) el resultado real de un partido y recalcula puntos + cuadro.

@@ -7,6 +7,7 @@ import { parseKickoffMs, arDayKey, formatDateAr } from "@/lib/format";
 import StandingsTable from "./StandingsTable";
 import MatchRow from "./MatchRow";
 import Bracket from "./Bracket";
+import MatchDetail from "./MatchDetail";
 
 // Orden cronológico (por horario real); los que no tienen fecha van al final.
 function byKickoff(a: MatchView, b: MatchView) {
@@ -245,7 +246,12 @@ export default function FixtureClient({
                         <span className="text-xs text-muted">{list.length} partidos</span>
                       </div>
                       <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
-                        {list.map((m) => row(m, `Grupo ${m.group_letter}`))}
+                        {list.map((m) => (
+                          <div key={m.id} className="pb-1">
+                            {row(m, `Grupo ${m.group_letter}`)}
+                            <MatchDetail matchId={m.id} />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   );

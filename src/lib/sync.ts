@@ -1,6 +1,6 @@
 import "server-only";
 import { query } from "./db";
-import { setMatchResult, recomputeBracket, getRanking, snapshotPositions } from "./data";
+import { setMatchResult, recomputeBracket } from "./data";
 
 // Sincroniza resultados reales desde football-data.org (plan gratuito incluye el Mundial, código "WC").
 // Mapea por pareja de equipos, así no depende de que el orden local/real coincida.
@@ -119,10 +119,6 @@ export async function syncResults(): Promise<SyncResult> {
 
   let resultsApplied = 0, datesUpdated = 0, unmapped = 0;
 
-  // Posiciones actuales (antes de aplicar resultados nuevos), para las flechitas del ranking.
-  const beforeRanking = await getRanking();
-  const prevPositions = new Map(beforeRanking.map((r, i) => [r.id, i + 1]));
-
   for (const am of apiMatches) {
     const hc = codeFor(am.homeTeam?.name ?? "", am.homeTeam?.tla);
     const ac = codeFor(am.awayTeam?.name ?? "", am.awayTeam?.tla);
@@ -162,11 +158,8 @@ export async function syncResults(): Promise<SyncResult> {
     }
   }
 
-  // Si hubo resultados nuevos: guardar las posiciones previas y recalcular el cuadro.
-  if (resultsApplied > 0) {
-    await snapshotPositions(prevPositions);
-    await recomputeBracket();
-  }
+  // Si hubo resultados nuevos, recalcular el cuadro de eliminatorias.
+  if (resultsApplied > 0) await recomputeBracket();
 
   return { ok: true, fetched: apiMatches.length, resultsApplied, datesUpdated, unmapped };
 }
