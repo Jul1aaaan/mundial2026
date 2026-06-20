@@ -3,7 +3,7 @@ import { Fragment, useMemo, useRef, useState } from "react";
 import type { MatchView, Team } from "@/lib/types";
 import { computeStandings } from "@/lib/scoring";
 import { isLockedClient } from "@/lib/clientLock";
-import { parseKickoffMs, arDayKey, formatDateAr } from "@/lib/format";
+import { parseKickoffMs, arDayKey, formatLongDateAr } from "@/lib/format";
 import StandingsTable from "./StandingsTable";
 import MatchRow from "./MatchRow";
 import Bracket from "./Bracket";
@@ -17,6 +17,20 @@ function byKickoff(a: MatchView, b: MatchView) {
   if (ka == null) return 1;
   if (kb == null) return -1;
   return ka - kb || a.ord - b.ord;
+}
+
+// Agrupa partidos por día (hora Argentina), ascendente o descendente.
+function groupByDay(list: MatchView[], descending: boolean) {
+  const byDay = new Map<number, MatchView[]>();
+  for (const m of list) {
+    const ms = parseKickoffMs(m.kickoff);
+    if (ms == null) continue;
+    const k = arDayKey(ms);
+    (byDay.get(k) ?? byDay.set(k, []).get(k)!).push(m);
+  }
+  return [...byDay.keys()]
+    .sort((a, b) => (descending ? b - a : a - b))
+    .map((day) => ({ day, list: byDay.get(day)!.slice().sort(byKickoff) }));
 }
 
 type SaveStatus = "saving" | "saved" | "error" | undefined;
@@ -39,9 +53,7 @@ export default function FixtureClient({
   teams: Team[];
   matches: MatchView[];
 }) {
-  const [tab, setTab] = useState<"fase" | "tablas" | "llaves">("fase");
-  // Filtro de la pestaña "Fase de grupos": Próximos (de hoy en adelante) o Todos.
-  const [faseScope, setFaseScope] = useState<"proximos" | "jugados">("proximos");
+  const [tab, setTab] = useState<"proximos" | "jugados" | "tablas" | "llaves">("proximos");
   const [preds, setPreds] = useState<PredMap>(() => {
     const init: PredMap = {};
     for (const m of matches) {
@@ -109,24 +121,16 @@ export default function FixtureClient({
     })).filter((r) => r.list.length > 0);
   }, [matches]);
 
-  // Fecha (1/2/3) de cada partido de grupos: dentro de cada grupo, los 6 partidos
-  // ordenados por horario forman 3 pares = Fecha 1, 2 y 3.
-  const matchdayById = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const { groupMatches } of groups) {
-      groupMatches.forEach((m, i) => map.set(m.id, Math.floor(i / 2) + 1));
-    }
-    return map;
-  }, [groups]);
-
-  // Partidos de grupos en orden cronológico, agrupados por Fecha (mezclando todos los grupos).
-  const fases = useMemo(() => {
-    const all = matches.filter((m) => m.stage === "group");
-    return [1, 2, 3].map((fecha) => ({
-      fecha,
-      list: all.filter((m) => matchdayById.get(m.id) === fecha).sort(byKickoff),
-    }));
-  }, [matches, matchdayById]);
+  // Partidos de grupos agrupados por día: próximos (no jugados, ascendente) y jugados (descendente).
+  const groupMatchesAll = useMemo(() => matches.filter((m) => m.stage === "group"), [matches]);
+  const proximosDays = useMemo(
+    () => groupByDay(groupMatchesAll.filter((m) => m.status !== "finished"), false),
+    [groupMatchesAll]
+  );
+  const jugadosDays = useMemo(
+    () => groupByDay(groupMatchesAll.filter((m) => m.status === "finished"), true),
+    [groupMatchesAll]
+  );
 
   function row(m: MatchView, tag?: string) {
     const p = preds[m.id];
@@ -146,14 +150,43 @@ export default function FixtureClient({
 
   // Eliminatorias: solo se muestra cuando ya hay cruces con equipos definidos.
   const hasKnockout = matches.some((m) => m.stage !== "group" && m.home_team && m.away_team);
-  const activeTab = tab === "llaves" && !hasKnockout ? "fase" : tab;
+  const activeTab = tab === "llaves" && !hasKnockout ? "proximos" : tab;
+  const isGroupTab = activeTab === "proximos" || activeTab === "jugados" || activeTab === "tablas";
+
+  // Tarjeta de un día: separador de fecha + los partidos de ese día.
+  const dayCard = (day: number, list: MatchView[], withDetail: boolean) => (
+    <div key={day} className="card card-top p-4">
+      <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-primary/15">
+        <span className="text-lg">📅</span>
+        <h3 className="font-extrabold text-base sm:text-lg capitalize">{formatLongDateAr(list[0].kickoff)}</h3>
+        <span className="ml-auto text-xs text-muted shrink-0">
+          {list.length} {list.length === 1 ? "partido" : "partidos"}
+        </span>
+      </div>
+      <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
+        {list.map((m) =>
+          withDetail ? (
+            <div key={m.id} className="pb-1">
+              {row(m, `Grupo ${m.group_letter}`)}
+              <MatchDetail matchId={m.id} />
+            </div>
+          ) : (
+            row(m, `Grupo ${m.group_letter}`)
+          )
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div>
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-full w-fit mx-auto">
-        <button className={`tab ${activeTab === "fase" ? "tab-active" : ""}`} onClick={() => setTab("fase")}>
-          ⚽ Fase de grupos
+      <div className="flex flex-wrap gap-2 mb-3 p-1.5 bg-[#e3ede8] rounded-full w-fit mx-auto">
+        <button className={`tab ${activeTab === "proximos" ? "tab-active" : ""}`} onClick={() => setTab("proximos")}>
+          📅 Próximos partidos
+        </button>
+        <button className={`tab ${activeTab === "jugados" ? "tab-active" : ""}`} onClick={() => setTab("jugados")}>
+          ✅ Jugados
         </button>
         <button className={`tab ${activeTab === "tablas" ? "tab-active" : ""}`} onClick={() => setTab("tablas")}>
           📊 Tablas
@@ -165,91 +198,37 @@ export default function FixtureClient({
         )}
       </div>
 
-      {/* Fase de grupos */}
-      {activeTab === "fase" && (() => {
-        // "Próximos partidos": en juego + por jugar (todo lo no finalizado), por Fecha 1/2/3.
-        const proximosView = fases
-          .map(({ fecha, list }) => ({ fecha, list: list.filter((m) => m.status !== "finished") }))
-          .filter((f) => f.list.length > 0);
+      {/* Título de la sección de grupos */}
+      {isGroupTab && (
+        <h2 className="text-center font-extrabold text-lg text-muted/90 mb-4">⚽ Fase de grupos</h2>
+      )}
 
-        // "Jugados": partidos finalizados, agrupados por día en orden descendente.
-        const byDay = new Map<number, MatchView[]>();
-        for (const m of matches) {
-          if (m.stage !== "group" || m.status !== "finished") continue;
-          const ms = parseKickoffMs(m.kickoff);
-          if (ms == null) continue;
-          const k = arDayKey(ms);
-          (byDay.get(k) ?? byDay.set(k, []).get(k)!).push(m);
-        }
-        const jugadosDays = [...byDay.keys()].sort((a, b) => b - a); // descendente
-
-        const toggleBtn = (scope: "proximos" | "jugados", label: string) => (
-          <button
-            className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
-              faseScope === scope ? "bg-primary text-white shadow-sm" : "bg-white border border-line text-muted"
-            }`}
-            onClick={() => setFaseScope(scope)}
-          >
-            {label}
-          </button>
-        );
-
-        return (
-          <section className="space-y-5">
-            <div className="flex items-center justify-center gap-2 -mt-1">
-              {toggleBtn("proximos", "📅 Próximos partidos")}
-              {toggleBtn("jugados", "✅ Jugados")}
+      {/* Próximos partidos: en juego + por jugar, por día (ascendente) */}
+      {activeTab === "proximos" && (
+        <section className="space-y-5">
+          {proximosDays.length === 0 ? (
+            <div className="card p-6 text-center text-muted text-sm">
+              No quedan partidos de grupos por jugar. Mirá los <b>Jugados</b>
+              {hasKnockout ? " o las Eliminatorias" : ""}.
             </div>
+          ) : (
+            proximosDays.map(({ day, list }) => dayCard(day, list, false))
+          )}
+        </section>
+      )}
 
-            {faseScope === "proximos" &&
-              (proximosView.length === 0 ? (
-                <div className="card p-6 text-center text-muted text-sm">
-                  No quedan partidos de grupos por jugar. Mirá los <b>Jugados</b>
-                  {hasKnockout ? " o las Eliminatorias" : ""}.
-                </div>
-              ) : (
-                proximosView.map(({ fecha, list }) => (
-                  <div key={fecha} className="card card-top p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="chip chip-green">Fecha {fecha}</span>
-                      <span className="text-xs text-muted">{list.length} partidos</span>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
-                      {list.map((m) => row(m, `Grupo ${m.group_letter}`))}
-                    </div>
-                  </div>
-                ))
-              ))}
-
-            {faseScope === "jugados" &&
-              (jugadosDays.length === 0 ? (
-                <div className="card p-6 text-center text-muted text-sm">
-                  Todavía no se jugó ningún partido de grupos.
-                </div>
-              ) : (
-                jugadosDays.map((day) => {
-                  const list = byDay.get(day)!.sort(byKickoff);
-                  return (
-                    <div key={day} className="card card-top p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="chip chip-green capitalize">{formatDateAr(list[0].kickoff)}</span>
-                        <span className="text-xs text-muted">{list.length} partidos</span>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
-                        {list.map((m) => (
-                          <div key={m.id} className="pb-1">
-                            {row(m, `Grupo ${m.group_letter}`)}
-                            <MatchDetail matchId={m.id} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              ))}
-          </section>
-        );
-      })()}
+      {/* Jugados: finalizados, por día (descendente) */}
+      {activeTab === "jugados" && (
+        <section className="space-y-5">
+          {jugadosDays.length === 0 ? (
+            <div className="card p-6 text-center text-muted text-sm">
+              Todavía no se jugó ningún partido de grupos.
+            </div>
+          ) : (
+            jugadosDays.map(({ day, list }) => dayCard(day, list, true))
+          )}
+        </section>
+      )}
 
       {activeTab === "tablas" && (
         <section className="grid lg:grid-cols-2 gap-5 items-start">

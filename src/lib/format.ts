@@ -5,6 +5,8 @@
 const AR_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC-3
 const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const DIAS_FULL = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const MESES_FULL = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 export function parseKickoffMs(kickoff: string | Date | null): number | null {
   if (!kickoff) return null;
@@ -45,6 +47,14 @@ export function formatDateAr(kickoff: string | Date | null): string {
   if (ms == null) return "";
   const d = new Date(ms - AR_OFFSET_MS);
   return `${DIAS[d.getUTCDay()]} ${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`;
+}
+
+// Ej: "viernes 20 de junio" (para los separadores por día).
+export function formatLongDateAr(kickoff: string | Date | null): string {
+  const ms = parseKickoffMs(kickoff);
+  if (ms == null) return "";
+  const d = new Date(ms - AR_OFFSET_MS);
+  return `${DIAS_FULL[d.getUTCDay()]} ${d.getUTCDate()} de ${MESES_FULL[d.getUTCMonth()]}`;
 }
 
 export const GROUP_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
