@@ -1,13 +1,16 @@
 import type { StandingRow } from "@/lib/types";
 import Flag from "./Flag";
 
-// Tabla de posiciones. Las primeras `qualify` filas se marcan como clasificadas.
+// Tabla de posiciones. Las primeras `qualify` filas van en verde (clasifican directo);
+// los equipos en `qualifiedThirds` (mejores terceros) van en amarillo.
 export default function StandingsTable({
   rows,
   qualify = 2,
+  qualifiedThirds,
 }: {
   rows: StandingRow[];
   qualify?: number;
+  qualifiedThirds?: Set<number>;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -27,15 +30,18 @@ export default function StandingsTable({
         <tbody>
           {rows.map((r, i) => {
             const qualifies = i < qualify;
+            const bestThird = !qualifies && qualifiedThirds?.has(r.teamId);
             return (
               <tr
                 key={r.teamId}
-                className={`border-t border-line ${qualifies ? "bg-emerald-50/70" : ""}`}
+                className={`border-t border-line ${
+                  qualifies ? "bg-emerald-50/70" : bestThird ? "bg-amber-50" : ""
+                }`}
               >
                 <td className="py-1.5 pl-2 text-muted">
                   <span
                     className={`inline-block w-1.5 h-5 rounded-full align-middle mr-1.5 ${
-                      qualifies ? "bg-emerald-500" : "bg-transparent"
+                      qualifies ? "bg-emerald-500" : bestThird ? "bg-amber-400" : "bg-transparent"
                     }`}
                   />
                   {i + 1}

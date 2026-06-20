@@ -8,6 +8,7 @@ import StandingsTable from "./StandingsTable";
 import MatchRow from "./MatchRow";
 import Bracket from "./Bracket";
 import MatchDetail from "./MatchDetail";
+import Goleadores from "./Goleadores";
 
 // Orden cronológico (por horario real); los que no tienen fecha van al final.
 function byKickoff(a: MatchView, b: MatchView) {
@@ -53,7 +54,7 @@ export default function FixtureClient({
   teams: Team[];
   matches: MatchView[];
 }) {
-  const [tab, setTab] = useState<"proximos" | "jugados" | "tablas" | "llaves">("proximos");
+  const [tab, setTab] = useState<"proximos" | "jugados" | "tablas" | "goleadores" | "llaves">("proximos");
   const [preds, setPreds] = useState<PredMap>(() => {
     const init: PredMap = {};
     for (const m of matches) {
@@ -111,6 +112,18 @@ export default function FixtureClient({
       groupMatches: matches.filter((m) => m.stage === "group" && m.group_letter === letter).sort(byKickoff),
     }));
   }, [teams, matches]);
+
+  // Los 8 mejores terceros (con los resultados reales de hoy), para pintarlos de amarillo.
+  const qualifiedThirds = useMemo(() => {
+    const thirds = groups
+      .map(({ groupTeams, groupMatches }) => computeStandings(groupTeams, realResults(groupMatches))[2])
+      .filter(Boolean);
+    const ranked = [...thirds].sort(
+      (a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf || a.name.localeCompare(b.name)
+    );
+    return new Set(ranked.slice(0, 8).map((r) => r.teamId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups]);
 
   const knockout = useMemo(() => {
     const koMatches = matches.filter((m) => m.stage !== "group");
@@ -191,6 +204,9 @@ export default function FixtureClient({
         <button className={`tab ${activeTab === "tablas" ? "tab-active" : ""}`} onClick={() => setTab("tablas")}>
           📊 Tablas
         </button>
+        <button className={`tab ${activeTab === "goleadores" ? "tab-active" : ""}`} onClick={() => setTab("goleadores")}>
+          🥅 Goleadores
+        </button>
         {hasKnockout && (
           <button className={`tab ${activeTab === "llaves" ? "tab-active" : ""}`} onClick={() => setTab("llaves")}>
             🏆 Eliminatorias
@@ -231,7 +247,16 @@ export default function FixtureClient({
       )}
 
       {activeTab === "tablas" && (
-        <section className="grid lg:grid-cols-2 gap-5 items-start">
+        <section>
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-muted mb-4">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 rounded bg-emerald-400" /> Clasifican (1º y 2º)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 rounded bg-amber-400" /> Mejores 8 terceros (provisorio)
+            </span>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-5 items-start">
           {groups.map(({ letter, groupTeams, groupMatches }) => {
             const standings = computeStandings(groupTeams, realResults(groupMatches));
             return (
@@ -244,7 +269,7 @@ export default function FixtureClient({
                   <span className="ml-auto text-muted text-sm transition-transform group-open:rotate-180">▾</span>
                 </summary>
                 <div className="mt-3">
-                  <StandingsTable rows={standings} qualify={2} />
+                  <StandingsTable rows={standings} qualify={2} qualifiedThirds={qualifiedThirds} />
                   <div className="mt-3 pt-1 border-t border-line">
                     {groupMatches.map((m, i) => (
                       <Fragment key={m.id}>
@@ -261,8 +286,11 @@ export default function FixtureClient({
               </details>
             );
           })}
+          </div>
         </section>
       )}
+
+      {activeTab === "goleadores" && <Goleadores />}
 
       {activeTab === "llaves" && (
         <section className="space-y-5">

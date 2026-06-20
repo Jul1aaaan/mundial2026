@@ -36,7 +36,7 @@ for (const [code, names] of Object.entries(ALIASES)) {
 }
 
 // Mapa por TLA (código de 3 letras de football-data) -> código local. Es lo más estable.
-const TLA_TO_CODE: Record<string, string> = {
+export const TLA_TO_CODE: Record<string, string> = {
   ALG: "DZ", ARG: "AR", AUS: "AU", AUT: "AT", BEL: "BE", BIH: "BA", BRA: "BR", CAN: "CA",
   CPV: "CV", COL: "CO", COD: "CD", CRO: "HR", CUW: "CW", CZE: "CZ", ECU: "EC", EGY: "EG",
   ENG: "ENG", FRA: "FR", GER: "DE", GHA: "GH", HAI: "HT", IRN: "IR", IRQ: "IQ", CIV: "CI",
