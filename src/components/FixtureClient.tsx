@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import type { MatchView, Team } from "@/lib/types";
 import { computeStandings } from "@/lib/scoring";
 import { isLockedClient } from "@/lib/clientLock";
@@ -42,9 +42,6 @@ export default function FixtureClient({
   const [tab, setTab] = useState<"fase" | "tablas" | "llaves">("fase");
   // Filtro de la pestaña "Fase de grupos": Próximos (de hoy en adelante) o Todos.
   const [faseScope, setFaseScope] = useState<"proximos" | "jugados">("proximos");
-  // Reloj del cliente (se setea al montar para no romper la hidratación).
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => setNow(Date.now()), []);
   const [preds, setPreds] = useState<PredMap>(() => {
     const init: PredMap = {};
     for (const m of matches) {
@@ -147,50 +144,42 @@ export default function FixtureClient({
     );
   }
 
+  // Eliminatorias: solo se muestra cuando ya hay cruces con equipos definidos.
+  const hasKnockout = matches.some((m) => m.stage !== "group" && m.home_team && m.away_team);
+  const activeTab = tab === "llaves" && !hasKnockout ? "fase" : tab;
+
   return (
     <div>
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-full w-fit mx-auto">
-        <button className={`tab ${tab === "fase" ? "tab-active" : ""}`} onClick={() => setTab("fase")}>
+        <button className={`tab ${activeTab === "fase" ? "tab-active" : ""}`} onClick={() => setTab("fase")}>
           ⚽ Fase de grupos
         </button>
-        <button className={`tab ${tab === "tablas" ? "tab-active" : ""}`} onClick={() => setTab("tablas")}>
+        <button className={`tab ${activeTab === "tablas" ? "tab-active" : ""}`} onClick={() => setTab("tablas")}>
           📊 Tablas
         </button>
-        <button className={`tab ${tab === "llaves" ? "tab-active" : ""}`} onClick={() => setTab("llaves")}>
-          🏆 Eliminatorias
-        </button>
+        {hasKnockout && (
+          <button className={`tab ${activeTab === "llaves" ? "tab-active" : ""}`} onClick={() => setTab("llaves")}>
+            🏆 Eliminatorias
+          </button>
+        )}
       </div>
 
       {/* Fase de grupos */}
-      {tab === "fase" && (() => {
-        const todayKey = now != null ? arDayKey(now) : null;
-
-        // "De hoy en adelante": Fechas 1/2/3, partidos de hoy en adelante (ascendente).
+      {activeTab === "fase" && (() => {
+        // "Próximos partidos": en juego + por jugar (todo lo no finalizado), por Fecha 1/2/3.
         const proximosView = fases
-          .map(({ fecha, list }) => ({
-            fecha,
-            list:
-              todayKey != null
-                ? list.filter((m) => {
-                    const ms = parseKickoffMs(m.kickoff);
-                    return ms != null && arDayKey(ms) >= todayKey;
-                  })
-                : list,
-          }))
+          .map(({ fecha, list }) => ({ fecha, list: list.filter((m) => m.status !== "finished") }))
           .filter((f) => f.list.length > 0);
 
-        // "Jugados": de hoy hacia atrás, agrupados por día en orden descendente.
-        const allGroup = matches.filter((m) => m.stage === "group");
+        // "Jugados": partidos finalizados, agrupados por día en orden descendente.
         const byDay = new Map<number, MatchView[]>();
-        if (todayKey != null) {
-          for (const m of allGroup) {
-            const ms = parseKickoffMs(m.kickoff);
-            if (ms == null) continue;
-            const k = arDayKey(ms);
-            if (k > todayKey) continue; // los futuros van en "De hoy en adelante"
-            (byDay.get(k) ?? byDay.set(k, []).get(k)!).push(m);
-          }
+        for (const m of matches) {
+          if (m.stage !== "group" || m.status !== "finished") continue;
+          const ms = parseKickoffMs(m.kickoff);
+          if (ms == null) continue;
+          const k = arDayKey(ms);
+          (byDay.get(k) ?? byDay.set(k, []).get(k)!).push(m);
         }
         const jugadosDays = [...byDay.keys()].sort((a, b) => b - a); // descendente
 
@@ -215,7 +204,8 @@ export default function FixtureClient({
             {faseScope === "proximos" &&
               (proximosView.length === 0 ? (
                 <div className="card p-6 text-center text-muted text-sm">
-                  No quedan partidos de grupos por jugar. Mirá los <b>Jugados</b> o las Eliminatorias.
+                  No quedan partidos de grupos por jugar. Mirá los <b>Jugados</b>
+                  {hasKnockout ? " o las Eliminatorias" : ""}.
                 </div>
               ) : (
                 proximosView.map(({ fecha, list }) => (
@@ -261,38 +251,41 @@ export default function FixtureClient({
         );
       })()}
 
-      {tab === "tablas" && (
-        <section className="grid lg:grid-cols-2 gap-5">
+      {activeTab === "tablas" && (
+        <section className="grid lg:grid-cols-2 gap-5 items-start">
           {groups.map(({ letter, groupTeams, groupMatches }) => {
             const standings = computeStandings(groupTeams, realResults(groupMatches));
             return (
-              <div key={letter} className="card card-top p-4">
-                <div className="flex items-center gap-2 mb-3">
+              <details key={letter} className="card card-top p-4 group">
+                <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                   <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary text-white font-extrabold shadow-sm">
                     {letter}
                   </span>
                   <h2 className="font-extrabold text-lg">Grupo {letter}</h2>
+                  <span className="ml-auto text-muted text-sm transition-transform group-open:rotate-180">▾</span>
+                </summary>
+                <div className="mt-3">
+                  <StandingsTable rows={standings} qualify={2} />
+                  <div className="mt-3 pt-1 border-t border-line">
+                    {groupMatches.map((m, i) => (
+                      <Fragment key={m.id}>
+                        {i % 2 === 0 && (
+                          <div className="text-[11px] font-bold uppercase tracking-wide text-primary/90 px-2 pt-3 pb-1">
+                            Fecha {Math.floor(i / 2) + 1}
+                          </div>
+                        )}
+                        {row(m)}
+                      </Fragment>
+                    ))}
+                  </div>
                 </div>
-                <StandingsTable rows={standings} qualify={2} />
-                <div className="mt-3 pt-1 border-t border-line">
-                  {groupMatches.map((m, i) => (
-                    <Fragment key={m.id}>
-                      {i % 2 === 0 && (
-                        <div className="text-[11px] font-bold uppercase tracking-wide text-primary/90 px-2 pt-3 pb-1">
-                          Fecha {Math.floor(i / 2) + 1}
-                        </div>
-                      )}
-                      {row(m)}
-                    </Fragment>
-                  ))}
-                </div>
-              </div>
+              </details>
             );
           })}
         </section>
       )}
 
-      {tab === "llaves" && (
+      {activeTab === "llaves" && (
         <section className="space-y-5">
           <p className="text-sm text-muted text-center -mt-1">
             Las llaves se completan <b className="text-primary">automáticamente</b> con los resultados reales.
