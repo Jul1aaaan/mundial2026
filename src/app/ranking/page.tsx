@@ -17,10 +17,13 @@ export default async function RankingPage() {
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
         <div className="card card-top p-5 mb-6">
           <h1 className="text-2xl font-extrabold">Ranking de la familia 🏅</h1>
-          <p className="text-muted mt-1 text-sm">
-            Se ordena por puntos. Quién gana/empata = 5, diferencia de gol exacta = +2, goles exactos
-            de un equipo = +1 c/u, resultado perfecto = 10.
-          </p>
+          <p className="text-muted mt-1 text-sm">Se ordena por puntos. Así se suman:</p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <span className="chip chip-blue">✅ Quién gana/empata = 5 pts</span>
+            <span className="chip chip-amber">⚽ Goles exactos de un equipo = +1 c/u</span>
+            <span className="chip chip-blue">📐 Diferencia de gol exacta = +2</span>
+            <span className="chip chip-green">🎯 Resultado perfecto = 10 pts</span>
+          </div>
         </div>
 
         <div className="card overflow-hidden">
