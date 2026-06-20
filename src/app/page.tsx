@@ -21,8 +21,8 @@ export default async function HomePage() {
       <NavBar name={user.name} admin={user.admin} />
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
         <div className="card card-top p-5 mb-6">
-          <h1 className="text-2xl font-extrabold flex items-center gap-2">
-            Fixture · Mundial <span className="text-primary">2026</span> 🌎
+          <h1 className="text-xl sm:text-2xl font-extrabold">
+            <span className="text-primary">Gaznapios</span> Mundial 2026 🏆
           </h1>
           <UserStats ranking={ranking} userId={user.uid} name={user.name} />
         </div>

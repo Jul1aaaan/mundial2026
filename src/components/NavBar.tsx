@@ -49,9 +49,11 @@ export default function NavBar({ name, admin }: { name: string; admin: boolean }
 
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-sm text-muted hidden sm:inline">Hola, {name}</span>
-          <button onClick={logout} className="btn btn-ghost text-sm py-1.5">
-            Salir
-          </button>
+          {admin && (
+            <button onClick={logout} className="btn btn-ghost text-sm py-1.5">
+              Salir
+            </button>
+          )}
         </div>
       </div>
     </header>

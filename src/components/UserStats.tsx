@@ -27,28 +27,29 @@ export default function UserStats({
   const gapBelow = below ? me.pts - below.pts : 0;
 
   return (
-    <div className="mt-2">
-      <p className="text-muted text-sm">
-        Hola, <span className="font-bold text-foreground">{name}</span> 👋
-      </p>
-
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-        <span className="text-3xl font-extrabold text-primary leading-none">
-          {me.pts}
-          <span className="text-base font-bold text-muted"> pts</span>
-        </span>
-        <span className="chip chip-green">
-          {pos}º de {total}
-        </span>
+    <div className="mt-3">
+      {/* Saludo grande a la izquierda, puntos/posición a la derecha */}
+      <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-2">
+        <div className="text-xl sm:text-2xl font-extrabold">Hola, {name} 👋</div>
+        <div className="flex items-center gap-2">
+          <span className="text-3xl font-extrabold text-primary leading-none">
+            {me.pts}
+            <span className="text-sm font-bold text-muted"> pts</span>
+          </span>
+          <span className="chip chip-green">
+            {pos}º de {total}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-2 space-y-0.5 text-sm text-muted">
+      {/* Distancias en el ranking */}
+      <div className="mt-3 space-y-0.5 text-sm text-muted">
         {!above && <p className="font-semibold text-primary">🥇 ¡Vas primero! A no relajarse 😎</p>}
 
         {above &&
           (gapAbove === 0 ? (
             <p>
-              Empatás en puntos con <b className="text-foreground">{above.name}</b> — un acierto y lo pasás.
+              Empatás con <b className="text-foreground">{above.name}</b> 🤝
             </p>
           ) : (
             <p>
@@ -68,11 +69,12 @@ export default function UserStats({
         {below &&
           (gapBelow === 0 ? (
             <p>
-              <b className="text-foreground">{below.name}</b> está empatado con vos, ojo 👀.
+              ¡Ojo! Estás empatado con <b className="text-foreground">{below.name}</b>, te pisa los talones 👀
             </p>
           ) : (
             <p>
-              <b className="text-foreground">{below.name}</b> te sigue a <b className="text-foreground">{pts(gapBelow)}</b>.
+              ¡Cuidado! A <b className="text-foreground">{below.name}</b> le faltan{" "}
+              <b className="text-foreground">{pts(gapBelow)}</b> para alcanzarte 👀
             </p>
           ))}
       </div>
