@@ -21,10 +21,12 @@ export default async function HomePage() {
       <NavBar name={user.name} admin={user.admin} />
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
         <div className="card card-top p-5 mb-6">
-          <h1 className="text-xl sm:text-2xl font-extrabold">
-            <span className="text-primary">Gaznapios</span> Mundial 2026 🏆
-          </h1>
-          <UserStats ranking={ranking} userId={user.uid} name={user.name} />
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
+            <h1 className="text-xl sm:text-2xl font-extrabold shrink-0">
+              <span className="text-primary">Gaznapios</span> Mundial 2026 🏆
+            </h1>
+            <UserStats ranking={ranking} userId={user.uid} name={user.name} />
+          </div>
         </div>
 
         <UpcomingMatches matches={matches} />
