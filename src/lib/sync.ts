@@ -1,6 +1,7 @@
 import "server-only";
 import { query } from "./db";
 import { setMatchResult, recomputeBracket } from "./data";
+import { backfillEspnGoals } from "./espn";
 
 // Sincroniza resultados reales desde football-data.org (plan gratuito incluye el Mundial, código "WC").
 // Mapea por pareja de equipos, así no depende de que el orden local/real coincida.
@@ -45,7 +46,7 @@ export const TLA_TO_CODE: Record<string, string> = {
   ESP: "ES", SWE: "SE", SUI: "CH", TUN: "TN", TUR: "TR", USA: "US", URY: "UY", UZB: "UZ",
 };
 
-function codeFor(apiName: string, tla?: string): string | null {
+export function codeFor(apiName: string, tla?: string): string | null {
   if (tla && TLA_TO_CODE[tla]) return TLA_TO_CODE[tla];
   return aliasToCode.get(norm(apiName)) ?? null;
 }
@@ -68,6 +69,7 @@ export type SyncResult = {
   resultsApplied: number;
   datesUpdated: number;
   unmapped: number;
+  goalsFilled?: number;
   error?: string;
 };
 
@@ -161,5 +163,13 @@ export async function syncResults(): Promise<SyncResult> {
   // Si hubo resultados nuevos, recalcular el cuadro de eliminatorias.
   if (resultsApplied > 0) await recomputeBracket();
 
-  return { ok: true, fetched: apiMatches.length, resultsApplied, datesUpdated, unmapped };
+  // Completar los goles (ESPN) de los partidos finalizados que aún no los tienen.
+  let goalsFilled = 0;
+  try {
+    goalsFilled = await backfillEspnGoals();
+  } catch {
+    /* no es crítico */
+  }
+
+  return { ok: true, fetched: apiMatches.length, resultsApplied, datesUpdated, unmapped, goalsFilled };
 }

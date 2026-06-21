@@ -8,6 +8,7 @@ import StandingsTable from "./StandingsTable";
 import MatchRow from "./MatchRow";
 import Bracket from "./Bracket";
 import MatchDetail from "./MatchDetail";
+import MatchFullDetail from "./MatchFullDetail";
 import Goleadores from "./Goleadores";
 
 // Orden cronológico (por horario real); los que no tienen fecha van al final.
@@ -279,6 +280,7 @@ export default function FixtureClient({
                           </div>
                         )}
                         {row(m)}
+                        {m.status === "finished" && <MatchFullDetail matchId={m.id} />}
                       </Fragment>
                     ))}
                   </div>

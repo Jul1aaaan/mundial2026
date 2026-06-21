@@ -27,13 +27,25 @@ export async function setUserPassword(userId: number, passwordHash: string): Pro
 }
 
 export async function getMatches(): Promise<Match[]> {
-  return query<Match[]>(
+  const rows = await query<(Omit<Match, "goals"> & { goals: string | null })[]>(
     `SELECT id, stage, group_letter, matchday, round_name, home_team_id, away_team_id,
             home_label, away_label,
             DATE_FORMAT(kickoff, '%Y-%m-%dT%H:%i:%s') AS kickoff,
-            home_score, away_score, status, external_id, ord, code, winner_team_id
+            home_score, away_score, status, external_id, ord, code, winner_team_id,
+            espn_id, goals
      FROM matches ORDER BY ord`
   );
+  return rows.map((r) => {
+    let goals: Match["goals"] = [];
+    if (r.goals) {
+      try {
+        goals = JSON.parse(r.goals);
+      } catch {
+        goals = [];
+      }
+    }
+    return { ...r, goals };
+  });
 }
 
 // Un partido está bloqueado para pronosticar si ya empezó o ya tiene resultado.

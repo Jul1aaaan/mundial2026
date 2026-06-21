@@ -6,6 +6,13 @@ import Flag from "./Flag";
 
 type SaveStatus = "saving" | "saved" | "error" | undefined;
 
+// "Brian Brobbey" -> "B. Brobbey"
+function abbrevName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2) return name;
+  return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
+}
+
 function TeamSide({
   code,
   name,
@@ -101,6 +108,29 @@ export default function MatchRow({
         </div>
         <TeamSide code={awayCode} name={awayName} align="left" />
       </div>
+
+      {/* Goles del partido (de ESPN), debajo de cada equipo */}
+      {match.goals.length > 0 && (
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-2 sm:gap-3 mt-1.5 text-[11px] text-muted">
+          <div className="space-y-0.5 text-right">
+            {match.goals.filter((g) => g.code === homeCode).map((g, i) => (
+              <div key={i}>
+                <b className="text-foreground">{g.min.replace(/'/g, "")}&apos;</b> {abbrevName(g.scorer)}
+                {g.pen ? " (P)" : ""}{g.og ? " (e/c)" : ""} ⚽
+              </div>
+            ))}
+          </div>
+          <div className="w-[5.7rem] sm:w-[6.2rem]" />
+          <div className="space-y-0.5 text-left">
+            {match.goals.filter((g) => g.code === awayCode).map((g, i) => (
+              <div key={i}>
+                ⚽ <b className="text-foreground">{g.min.replace(/'/g, "")}&apos;</b> {abbrevName(g.scorer)}
+                {g.pen ? " (P)" : ""}{g.og ? " (e/c)" : ""}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {variant === "scored" && (
         <div className="text-center text-[11px] text-muted mt-1">

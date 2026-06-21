@@ -65,6 +65,8 @@ await conn.query(`
     ord INT NOT NULL DEFAULT 0,
     code VARCHAR(8) NULL,
     winner_team_id INT NULL,
+    espn_id VARCHAR(20) NULL,
+    goals TEXT NULL,
     INDEX (stage),
     INDEX (group_letter)
   );

@@ -8,6 +8,15 @@ export type Team = {
 
 export type Stage = "group" | "r32" | "r16" | "qf" | "sf" | "third" | "final";
 
+export type Goal = {
+  min: string;
+  code: string; // código del equipo que metió
+  scorer: string;
+  assist: string | null;
+  pen: boolean;
+  og: boolean;
+};
+
 export type Match = {
   id: number;
   stage: Stage;
@@ -26,6 +35,8 @@ export type Match = {
   ord: number;
   code: string | null; // identificador estable de la llave (M73..M104)
   winner_team_id: number | null; // ganador en caso de empate (penales) en eliminatorias
+  espn_id: string | null; // id del partido en ESPN (para el detalle)
+  goals: Goal[]; // goles del partido (de ESPN)
 };
 
 // Partido enriquecido con datos de equipos y el pronóstico del usuario (para la UI).
