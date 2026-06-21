@@ -22,7 +22,7 @@ export default async function HomePage() {
         <div className="card card-top p-5 mb-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
             <h1 className="text-xl sm:text-2xl font-extrabold shrink-0">
-              <span className="text-primary">Gaznapios</span> Mundial 2026 🏆
+              <span className="brand-grad">Gaznapios Mundial 2026</span> 🏆
             </h1>
             <UserStats ranking={ranking} userId={user.uid} name={user.name} />
           </div>
