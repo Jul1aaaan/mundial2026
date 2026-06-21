@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Flag from "./Flag";
 
 type TL = { min: string; code: string | null; kind: "goal" | "yellow" | "red" | "sub"; main: string; sub: string | null };
@@ -39,16 +40,85 @@ function LineupBlock({ l }: { l: Lineup }) {
   );
 }
 
+function DetailBody({ d }: { d: Detail }) {
+  const timeline = [...d.timeline].sort((a, b) => minNum(a.min) - minNum(b.min));
+  return (
+    <div className="space-y-3 text-xs">
+      {/* Encabezado */}
+      <div className="flex items-center justify-center gap-3 font-bold text-sm">
+        <span className="flex items-center gap-1.5">
+          <Flag code={d.home.code} size={18} /> {d.home.name}
+        </span>
+        <span className="text-primary text-base">{d.home.score}-{d.away.score}</span>
+        <span className="flex items-center gap-1.5">
+          {d.away.name} <Flag code={d.away.code} size={18} />
+        </span>
+      </div>
+      {d.venue && <p className="text-center text-muted -mt-1">{d.venue}</p>}
+
+      {/* Estadísticas */}
+      {d.stats.length > 0 && (
+        <div>
+          <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Estadísticas</h4>
+          <div className="space-y-1">
+            {d.stats.map((s, i) => (
+              <div key={i} className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2">
+                <span className="text-right font-bold">{s.home}</span>
+                <span className="text-center text-muted">{s.label}</span>
+                <span className="text-left font-bold">{s.away}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Eventos */}
+      {timeline.length > 0 && (
+        <div>
+          <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Eventos</h4>
+          <div className="space-y-0.5">
+            {timeline.map((t, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="w-9 text-right font-bold text-muted shrink-0">{t.min}&apos;</span>
+                <span className="shrink-0">{ICON[t.kind]}</span>
+                <Flag code={t.code} size={13} />
+                <span className="truncate">
+                  {t.main}
+                  {t.kind === "sub" && t.sub ? <span className="text-muted"> ↩ {t.sub}</span> : null}
+                  {t.kind === "goal" && t.sub ? <span className="text-muted"> (asist. {t.sub})</span> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Alineaciones */}
+      {d.lineups.length > 0 && (
+        <div>
+          <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Alineaciones</h4>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {d.lineups.map((l, i) => (
+              <LineupBlock key={i} l={l} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted text-right">Datos: ESPN</p>
+    </div>
+  );
+}
+
 export default function MatchFullDetail({ matchId }: { matchId: number }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<Detail | null | undefined>(undefined);
+  const [mounted, setMounted] = useState(false);
 
-  async function toggle() {
-    if (open) {
-      setOpen(false);
-      return;
-    }
+  useEffect(() => setMounted(true), []);
+
+  async function openModal() {
     setOpen(true);
     if (detail === undefined) {
       setLoading(true);
@@ -64,89 +134,54 @@ export default function MatchFullDetail({ matchId }: { matchId: number }) {
     }
   }
 
-  const d = detail;
-  const timeline = d ? [...d.timeline].sort((a, b) => minNum(a.min) - minNum(b.min)) : [];
+  // Cerrar con Escape + bloquear el scroll del fondo mientras está abierto.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   return (
     <div className="px-2 sm:px-3 pb-2">
-      <button onClick={toggle} className="text-xs font-semibold text-primary hover:underline">
-        {open ? "▲ Ocultar detalles" : "🔎 Detalles del partido"}
+      <button onClick={openModal} className="text-xs font-semibold text-primary hover:underline">
+        🔎 Detalles del partido
       </button>
 
-      {open && (
-        <div className="mt-1.5 rounded-lg border border-line bg-[#f9fbfa] p-3 text-xs space-y-3">
-          {loading ? (
-            <p className="text-muted">Cargando…</p>
-          ) : !d ? (
-            <p className="text-muted">No hay datos disponibles de este partido.</p>
-          ) : (
-            <>
-              {/* Encabezado */}
-              <div className="flex items-center justify-center gap-3 font-bold text-sm">
-                <span className="flex items-center gap-1.5">
-                  <Flag code={d.home.code} size={18} /> {d.home.name}
-                </span>
-                <span className="text-primary text-base">{d.home.score}-{d.away.score}</span>
-                <span className="flex items-center gap-1.5">
-                  {d.away.name} <Flag code={d.away.code} size={18} />
-                </span>
+      {open &&
+        mounted &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          >
+            <div
+              className="card w-full sm:max-w-lg max-h-[90vh] sm:max-h-[88vh] overflow-y-auto rounded-b-none sm:rounded-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-line bg-surface/95 backdrop-blur">
+                <h3 className="font-extrabold text-sm">Detalle del partido</h3>
+                <button onClick={() => setOpen(false)} className="btn btn-ghost py-1 px-2.5 text-sm" aria-label="Cerrar">
+                  ✕
+                </button>
               </div>
-              {d.venue && <p className="text-center text-muted -mt-1">{d.venue}</p>}
-
-              {/* Estadísticas */}
-              {d.stats.length > 0 && (
-                <div>
-                  <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Estadísticas</h4>
-                  <div className="space-y-1">
-                    {d.stats.map((s, i) => (
-                      <div key={i} className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2">
-                        <span className="text-right font-bold">{s.home}</span>
-                        <span className="text-center text-muted">{s.label}</span>
-                        <span className="text-left font-bold">{s.away}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Línea de tiempo */}
-              {timeline.length > 0 && (
-                <div>
-                  <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Eventos</h4>
-                  <div className="space-y-0.5">
-                    {timeline.map((t, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="w-9 text-right font-bold text-muted shrink-0">{t.min}&apos;</span>
-                        <span className="shrink-0">{ICON[t.kind]}</span>
-                        <Flag code={t.code} size={13} />
-                        <span className="truncate">
-                          {t.main}
-                          {t.kind === "sub" && t.sub ? <span className="text-muted"> ↩ {t.sub}</span> : null}
-                          {t.kind === "goal" && t.sub ? <span className="text-muted"> (asist. {t.sub})</span> : null}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Alineaciones */}
-              {d.lineups.length > 0 && (
-                <div>
-                  <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Alineaciones</h4>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    {d.lineups.map((l, i) => (
-                      <LineupBlock key={i} l={l} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <p className="text-[10px] text-muted text-right">Datos: ESPN</p>
-            </>
-          )}
-        </div>
-      )}
+              <div className="p-4">
+                {loading ? (
+                  <p className="text-muted text-sm">Cargando…</p>
+                ) : !detail ? (
+                  <p className="text-muted text-sm">No hay datos disponibles de este partido.</p>
+                ) : (
+                  <DetailBody d={detail} />
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
