@@ -24,7 +24,6 @@ export default function UserStats({
 
   const me = ranking[idx];
   const total = ranking.length;
-  const pos = idx + 1;
 
   const wanted = [...new Set([0, idx - 1, idx, idx + 1].filter((i) => i >= 0 && i < total))].sort(
     (a, b) => a - b
@@ -38,12 +37,8 @@ export default function UserStats({
 
   return (
     <div className="md:text-right w-full md:w-auto">
-      <div className="flex items-center gap-x-3 gap-y-1 flex-wrap md:justify-end">
+      <div className="md:justify-end flex">
         <span className="text-xl sm:text-2xl font-extrabold">Hola, {name} 👋</span>
-        {/* La posición en chip solo en PC; en celular ya se ve en las barritas */}
-        <span className="chip chip-green hidden md:inline-flex">
-          {pos}º de {total}
-        </span>
       </div>
 
       {/* Mini-ranking, solo en celular */}
