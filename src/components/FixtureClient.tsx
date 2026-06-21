@@ -165,13 +165,11 @@ export default function FixtureClient({
   // Eliminatorias: solo se muestra cuando ya hay cruces con equipos definidos.
   const hasKnockout = matches.some((m) => m.stage !== "group" && m.home_team && m.away_team);
   const activeTab = tab === "llaves" && !hasKnockout ? "proximos" : tab;
-  const isGroupTab = activeTab === "proximos" || activeTab === "jugados" || activeTab === "tablas";
 
   // Tarjeta de un día: separador de fecha + los partidos de ese día.
   const dayCard = (day: number, list: MatchView[], withDetail: boolean) => (
     <div key={day} className="card card-top p-4">
       <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-primary/15">
-        <span className="text-lg">📅</span>
         <h3 className="font-extrabold text-base sm:text-lg capitalize">{formatLongDateAr(list[0].kickoff)}</h3>
         <span className="ml-auto text-xs text-muted shrink-0">
           {list.length} {list.length === 1 ? "partido" : "partidos"}
@@ -194,10 +192,14 @@ export default function FixtureClient({
 
   return (
     <div>
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-3 p-1.5 bg-[#e3ede8] rounded-full w-fit mx-auto">
+      {/* Tabs (simétricos: 2 columnas en celular, una fila en PC) */}
+      <div
+        className={`grid grid-cols-2 ${
+          hasKnockout ? "sm:grid-cols-5" : "sm:grid-cols-4"
+        } gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-2xl w-full max-w-sm sm:max-w-none sm:w-fit mx-auto`}
+      >
         <button className={`tab ${activeTab === "proximos" ? "tab-active" : ""}`} onClick={() => setTab("proximos")}>
-          📅 Próximos partidos
+          📅 Próximos
         </button>
         <button className={`tab ${activeTab === "jugados" ? "tab-active" : ""}`} onClick={() => setTab("jugados")}>
           ✅ Jugados
@@ -209,16 +211,14 @@ export default function FixtureClient({
           🥅 Goleadores
         </button>
         {hasKnockout && (
-          <button className={`tab ${activeTab === "llaves" ? "tab-active" : ""}`} onClick={() => setTab("llaves")}>
+          <button
+            className={`tab col-span-2 sm:col-span-1 ${activeTab === "llaves" ? "tab-active" : ""}`}
+            onClick={() => setTab("llaves")}
+          >
             🏆 Eliminatorias
           </button>
         )}
       </div>
-
-      {/* Título de la sección de grupos */}
-      {isGroupTab && (
-        <h2 className="text-center font-extrabold text-lg text-muted/90 mb-4">⚽ Fase de grupos</h2>
-      )}
 
       {/* Próximos partidos: en juego + por jugar, por día (ascendente) */}
       {activeTab === "proximos" && (
