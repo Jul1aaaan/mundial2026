@@ -48,6 +48,32 @@ export type MatchView = Match & {
   points: number | null;
 };
 
+// ---- Detalle de partido (datos de ESPN) ----
+export type TimelineItem = {
+  min: string;
+  code: string | null;
+  kind: "goal" | "yellow" | "red" | "sub";
+  main: string;
+  sub: string | null;
+};
+export type LineupPlayer = { num: string; name: string; pos: string; posName: string };
+export type Lineup = {
+  code: string | null;
+  name: string;
+  formation: string | null;
+  starters: LineupPlayer[];
+  bench: { num: string; name: string }[];
+};
+export type EspnDetail = {
+  home: { name: string; code: string | null; score: number | null };
+  away: { name: string; code: string | null; score: number | null };
+  status: string;
+  venue: string | null;
+  timeline: TimelineItem[];
+  lineups: Lineup[];
+  stats: { label: string; home: string; away: string }[];
+};
+
 export type StandingRow = {
   teamId: number;
   name: string;

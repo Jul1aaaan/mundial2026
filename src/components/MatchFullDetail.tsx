@@ -1,66 +1,64 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import type { EspnDetail, Lineup, TimelineItem } from "@/lib/types";
 import Flag from "./Flag";
+import Pitch from "./Pitch";
 
-type TL = { min: string; code: string | null; kind: "goal" | "yellow" | "red" | "sub"; main: string; sub: string | null };
-type Lineup = { code: string | null; name: string; formation: string | null; starters: { num: string; name: string }[]; bench: { num: string; name: string }[] };
-type Detail = {
-  home: { name: string; code: string | null; score: number | null };
-  away: { name: string; code: string | null; score: number | null };
-  status: string;
-  venue: string | null;
-  timeline: TL[];
-  lineups: Lineup[];
-  stats: { label: string; home: string; away: string }[];
-};
-
-const ICON: Record<TL["kind"], string> = { goal: "⚽", yellow: "🟨", red: "🟥", sub: "🔁" };
+const ICON: Record<TimelineItem["kind"], string> = { goal: "⚽", yellow: "🟨", red: "🟥", sub: "🔁" };
 const minNum = (m: string) => parseInt(m, 10) || 0;
 
-function LineupBlock({ l }: { l: Lineup }) {
+function TeamLineup({ l }: { l: Lineup }) {
   return (
     <div>
-      <div className="flex items-center gap-2 font-bold mb-1">
+      <div className="flex items-center justify-center gap-2 font-bold mb-1.5">
         <Flag code={l.code} size={16} />
         <span className="truncate">{l.name}</span>
         {l.formation && <span className="text-muted font-normal">· {l.formation}</span>}
       </div>
-      <div className="text-muted">
-        <span className="font-semibold text-foreground">Titulares:</span>{" "}
-        {l.starters.map((p) => `${p.num ? p.num + " " : ""}${p.name}`).join(", ") || "—"}
-      </div>
+      <Pitch lineup={l} />
       {l.bench.length > 0 && (
-        <div className="text-muted mt-0.5">
+        <p className="text-[10px] text-muted mt-1.5 leading-snug">
           <span className="font-semibold text-foreground">Suplentes:</span>{" "}
           {l.bench.map((p) => p.name).join(", ")}
-        </div>
+        </p>
       )}
     </div>
   );
 }
 
-function DetailBody({ d }: { d: Detail }) {
+function DetailBody({ d }: { d: EspnDetail }) {
   const timeline = [...d.timeline].sort((a, b) => minNum(a.min) - minNum(b.min));
   return (
-    <div className="space-y-3 text-xs">
+    <div className="space-y-4 text-xs">
       {/* Encabezado */}
-      <div className="flex items-center justify-center gap-3 font-bold text-sm">
-        <span className="flex items-center gap-1.5">
-          <Flag code={d.home.code} size={18} /> {d.home.name}
-        </span>
-        <span className="text-primary text-base">{d.home.score}-{d.away.score}</span>
-        <span className="flex items-center gap-1.5">
-          {d.away.name} <Flag code={d.away.code} size={18} />
-        </span>
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-3 font-bold text-sm">
+          <span className="flex items-center gap-1.5">
+            <Flag code={d.home.code} size={18} /> {d.home.name}
+          </span>
+          <span className="text-primary text-lg">{d.home.score}-{d.away.score}</span>
+          <span className="flex items-center gap-1.5">
+            {d.away.name} <Flag code={d.away.code} size={18} />
+          </span>
+        </div>
+        {d.venue && <p className="text-muted mt-0.5">{d.venue}</p>}
       </div>
-      {d.venue && <p className="text-center text-muted -mt-1">{d.venue}</p>}
+
+      {/* Alineaciones (canchas) */}
+      {d.lineups.length > 0 && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          {d.lineups.map((l, i) => (
+            <TeamLineup key={i} l={l} />
+          ))}
+        </div>
+      )}
 
       {/* Estadísticas */}
       {d.stats.length > 0 && (
         <div>
-          <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Estadísticas</h4>
-          <div className="space-y-1">
+          <h4 className="font-bold text-center mb-2 uppercase text-[11px] tracking-wide text-muted">Estadísticas</h4>
+          <div className="space-y-1.5">
             {d.stats.map((s, i) => (
               <div key={i} className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2">
                 <span className="text-right font-bold">{s.home}</span>
@@ -75,7 +73,7 @@ function DetailBody({ d }: { d: Detail }) {
       {/* Eventos */}
       {timeline.length > 0 && (
         <div>
-          <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Eventos</h4>
+          <h4 className="font-bold text-center mb-2 uppercase text-[11px] tracking-wide text-muted">Eventos</h4>
           <div className="space-y-0.5">
             {timeline.map((t, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -93,18 +91,6 @@ function DetailBody({ d }: { d: Detail }) {
         </div>
       )}
 
-      {/* Alineaciones */}
-      {d.lineups.length > 0 && (
-        <div>
-          <h4 className="font-bold text-center mb-1 uppercase text-[11px] tracking-wide text-muted">Alineaciones</h4>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {d.lineups.map((l, i) => (
-              <LineupBlock key={i} l={l} />
-            ))}
-          </div>
-        </div>
-      )}
-
       <p className="text-[10px] text-muted text-right">Datos: ESPN</p>
     </div>
   );
@@ -113,7 +99,7 @@ function DetailBody({ d }: { d: Detail }) {
 export default function MatchFullDetail({ matchId }: { matchId: number }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [detail, setDetail] = useState<Detail | null | undefined>(undefined);
+  const [detail, setDetail] = useState<EspnDetail | null | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -134,7 +120,6 @@ export default function MatchFullDetail({ matchId }: { matchId: number }) {
     }
   }
 
-  // Cerrar con Escape + bloquear el scroll del fondo mientras está abierto.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -160,7 +145,7 @@ export default function MatchFullDetail({ matchId }: { matchId: number }) {
             onClick={() => setOpen(false)}
           >
             <div
-              className="card w-full sm:max-w-lg max-h-[90vh] sm:max-h-[88vh] overflow-y-auto rounded-b-none sm:rounded-2xl"
+              className="card w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-b-none sm:rounded-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-line bg-surface/95 backdrop-blur">

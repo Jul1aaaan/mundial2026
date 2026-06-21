@@ -136,5 +136,23 @@ body {
 }
 .field:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(12, 166, 120, 0.18); }
 
+/* Cancha para las alineaciones */
+.pitch {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background-color: #1f9d57;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0,
+    rgba(255, 255, 255, 0.06) 12.5%,
+    transparent 12.5%,
+    transparent 25%
+  );
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+
 ::-webkit-scrollbar { height: 9px; width: 9px; }
 ::-webkit-scrollbar-thumb { background: rgba(11, 90, 65, 0.2); border-radius: 99px; }

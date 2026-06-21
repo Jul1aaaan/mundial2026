@@ -1,7 +1,7 @@
 import "server-only";
 import { query } from "./db";
 import { codeFor } from "./sync";
-import type { Goal } from "./types";
+import type { Goal, TimelineItem, Lineup, LineupPlayer, EspnDetail } from "./types";
 
 // API pública (no oficial) de ESPN para datos detallados del Mundial 2026.
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world";
@@ -117,30 +117,6 @@ export async function fetchEspnSummary(eventId: string): Promise<any | null> {
   return espnGet(`/summary?event=${eventId}`);
 }
 
-export type TimelineItem = {
-  min: string;
-  code: string | null;
-  kind: "goal" | "yellow" | "red" | "sub";
-  main: string;
-  sub: string | null;
-};
-export type Lineup = {
-  code: string | null;
-  name: string;
-  formation: string | null;
-  starters: { num: string; name: string }[];
-  bench: { num: string; name: string }[];
-};
-export type EspnDetail = {
-  home: { name: string; code: string | null; score: number | null };
-  away: { name: string; code: string | null; score: number | null };
-  status: string;
-  venue: string | null;
-  timeline: TimelineItem[];
-  lineups: Lineup[];
-  stats: { label: string; home: string; away: string }[];
-};
-
 const STAT_LABELS: [string, string][] = [
   ["possessionPct", "Posesión %"],
   ["totalShots", "Remates"],
@@ -203,14 +179,19 @@ export async function getEspnDetail(eventId: string): Promise<EspnDetail | null>
     const players = (r.roster ?? []).map((p: any) => ({
       num: String(p.jersey ?? ""),
       name: p.athlete?.displayName ?? "",
+      pos: p.position?.abbreviation ?? "",
+      posName: p.position?.name ?? "",
       starter: !!p.starter,
     }));
     return {
       code: codeOf(r.team?.id),
       name: r.team?.displayName ?? "",
       formation: r.formation ?? null,
-      starters: players.filter((p: { starter: boolean }) => p.starter),
-      bench: players.filter((p: { starter: boolean }) => !p.starter),
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      starters: players.filter((p: { starter: boolean }) => p.starter).map(({ starter, ...rest }: LineupPlayer & { starter: boolean }) => rest),
+      bench: players
+        .filter((p: { starter: boolean }) => !p.starter)
+        .map((p: { num: string; name: string }) => ({ num: p.num, name: p.name })),
     };
   });
 
