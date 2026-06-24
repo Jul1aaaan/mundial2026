@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useMemo, useRef, useState } from "react";
 import type { MatchView, Team } from "@/lib/types";
-import { computeStandings, clinchedTop2 } from "@/lib/scoring";
+import { computeStandings, clinchedFirst } from "@/lib/scoring";
 import { isLockedClient } from "@/lib/clientLock";
 import { parseKickoffMs, arDayKey, formatLongDateAr } from "@/lib/format";
 import StandingsTable from "./StandingsTable";
@@ -254,7 +254,7 @@ export default function FixtureClient({
         <section>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-xs text-muted mb-4">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-3 h-3 rounded bg-emerald-500" /> Ya clasificó ✓
+              <span className="inline-block w-3 h-3 rounded bg-emerald-500" /> 1º asegurado ✓
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block w-3 h-3 rounded bg-emerald-300" /> Puestos 1º y 2º
@@ -266,7 +266,7 @@ export default function FixtureClient({
           <div className="grid lg:grid-cols-2 gap-5 items-start">
           {groups.map(({ letter, groupTeams, groupMatches }) => {
             const standings = computeStandings(groupTeams, realResults(groupMatches));
-            const clinched = clinchedTop2(groupTeams, groupMatches);
+            const clinched = clinchedFirst(groupTeams, groupMatches);
             return (
               <details key={letter} className="card card-top p-4 group">
                 <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">

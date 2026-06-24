@@ -125,18 +125,24 @@ type ClinchMatch = {
   status: string;
 };
 
-// Equipos que YA tienen asegurado el top-2 del grupo (clasifican sí o sí),
-// pase lo que pase en los partidos que faltan. Cálculo conservador por puntos.
-export function clinchedTop2(teams: Team[], matches: ClinchMatch[]): Set<number> {
+type WDL = "H" | "D" | "A";
+
+// Equipo que YA tiene asegurado el 1º puesto del grupo, pase lo que pase en lo que falta.
+// Considera el desempate por head-to-head (si queda empatado en la cima, gana 1º si le
+// ganó en la cancha a todos los que lo igualan).
+export function clinchedFirst(teams: Team[], matches: ClinchMatch[]): Set<number> {
   const ids = teams.map((t) => t.id);
   const base = new Map(ids.map((id) => [id, 0]));
+  const finished: { h: number; a: number; res: WDL }[] = [];
   const remaining: [number, number][] = [];
 
   for (const m of matches) {
     if (m.home_team_id == null || m.away_team_id == null) continue;
     if (m.status === "finished" && m.home_score != null && m.away_score != null) {
-      if (m.home_score > m.away_score) base.set(m.home_team_id, base.get(m.home_team_id)! + 3);
-      else if (m.home_score < m.away_score) base.set(m.away_team_id, base.get(m.away_team_id)! + 3);
+      const res: WDL = m.home_score > m.away_score ? "H" : m.home_score < m.away_score ? "A" : "D";
+      finished.push({ h: m.home_team_id, a: m.away_team_id, res });
+      if (res === "H") base.set(m.home_team_id, base.get(m.home_team_id)! + 3);
+      else if (res === "A") base.set(m.away_team_id, base.get(m.away_team_id)! + 3);
       else {
         base.set(m.home_team_id, base.get(m.home_team_id)! + 1);
         base.set(m.away_team_id, base.get(m.away_team_id)! + 1);
@@ -146,32 +152,56 @@ export function clinchedTop2(teams: Team[], matches: ClinchMatch[]): Set<number>
     }
   }
 
-  // Grupo terminado: clasifican los 2 primeros reales (con el desempate correcto).
+  // Grupo terminado: 1º es el real (con el desempate correcto).
   if (remaining.length === 0) {
     const st = computeStandings(teams, matches);
-    return new Set(st.slice(0, 2).map((r) => r.teamId));
+    return st.length ? new Set([st[0].teamId]) : new Set();
   }
 
-  // Probar TODAS las combinaciones posibles de los partidos que faltan (3^R).
+  // Probar TODAS las combinaciones de los partidos que faltan (3^R).
   const clinched = new Set(ids);
   const total = 3 ** remaining.length;
   for (let mask = 0; mask < total && clinched.size > 0; mask++) {
     const pts = new Map(base);
+    const res = finished.slice();
     let x = mask;
     for (const [h, a] of remaining) {
       const o = x % 3;
       x = (x - o) / 3;
-      if (o === 0) pts.set(h, pts.get(h)! + 3);
-      else if (o === 1) {
+      const r: WDL = o === 0 ? "H" : o === 1 ? "D" : "A";
+      res.push({ h, a, res: r });
+      if (r === "H") pts.set(h, pts.get(h)! + 3);
+      else if (r === "D") {
         pts.set(h, pts.get(h)! + 1);
         pts.set(a, pts.get(a)! + 1);
       } else pts.set(a, pts.get(a)! + 3);
     }
+
+    const maxP = Math.max(...pts.values());
     for (const id of [...clinched]) {
-      const p = pts.get(id)!;
-      let geq = 0;
-      for (const oid of ids) if (oid !== id && pts.get(oid)! >= p) geq++;
-      if (geq > 1) clinched.delete(id); // podría quedar 3º o peor en algún escenario
+      if (pts.get(id)! < maxP) {
+        clinched.delete(id);
+        continue;
+      }
+      const top = ids.filter((i) => pts.get(i)! === maxP);
+      if (top.length === 1) continue; // solo en la cima → 1º seguro
+      // Empate en la cima: gana 1º quien tenga MÁS puntos head-to-head entre los empatados.
+      const topSet = new Set(top);
+      const h2h = new Map(top.map((i) => [i, 0]));
+      for (const r of res) {
+        if (!topSet.has(r.h) || !topSet.has(r.a)) continue;
+        if (r.res === "H") h2h.set(r.h, h2h.get(r.h)! + 3);
+        else if (r.res === "A") h2h.set(r.a, h2h.get(r.a)! + 3);
+        else {
+          h2h.set(r.h, h2h.get(r.h)! + 1);
+          h2h.set(r.a, h2h.get(r.a)! + 1);
+        }
+      }
+      const maxH = Math.max(...h2h.values());
+      // Solo 1º seguro si gana el head-to-head de forma estricta (si no, la dif. de gol podría sacarlo).
+      if (h2h.get(id)! < maxH || top.filter((i) => h2h.get(i)! === maxH).length > 1) {
+        clinched.delete(id);
+      }
     }
   }
   return clinched;

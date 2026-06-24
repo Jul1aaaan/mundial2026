@@ -1,4 +1,4 @@
-import { computeStandings } from "./scoring";
+import { computeStandings, clinchedFirst } from "./scoring";
 import type { Match, StandingRow, Team } from "./types";
 
 // ---- Estructura oficial del cuadro del Mundial 2026 (48 equipos) ----
@@ -119,18 +119,23 @@ export function resolveBracket(
   const groupLetters = [...new Set(teams.map((t) => t.group_letter))].sort();
   const groupMatches = matches.filter((m) => m.stage === "group");
 
-  // Tabla de cada grupo + si el grupo ya terminó (6 partidos jugados).
+  // Tabla de cada grupo + si terminó (6 partidos) + 1º asegurado (aunque no haya terminado).
   const standings = new Map<string, StandingRow[]>();
   const complete = new Map<string, boolean>();
+  const clinchedW = new Map<string, number | null>();
   for (const g of groupLetters) {
     const gTeams = teams.filter((t) => t.group_letter === g);
     const gMatches = groupMatches.filter((m) => m.group_letter === g);
     standings.set(g, computeStandings(gTeams, gMatches));
     complete.set(g, gMatches.filter((m) => m.status === "finished").length >= 6);
+    const cf = [...clinchedFirst(gTeams, gMatches)];
+    clinchedW.set(g, cf[0] ?? null);
   }
   const allGroupsDone = groupLetters.every((g) => complete.get(g));
 
-  const winnerG = (g: string) => (complete.get(g) ? standings.get(g)![0]?.teamId ?? null : null);
+  // 1º del grupo: el real si terminó, o el que ya tiene asegurado el 1º puesto.
+  const winnerG = (g: string) =>
+    complete.get(g) ? standings.get(g)![0]?.teamId ?? null : clinchedW.get(g) ?? null;
   const runnerG = (g: string) => (complete.get(g) ? standings.get(g)![1]?.teamId ?? null : null);
   const thirdG = (g: string) => standings.get(g)![2];
 

@@ -53,7 +53,7 @@ export default function StandingsTable({
                   <span className="flex items-center gap-2">
                     <Flag code={r.code} size={16} />
                     <span className="truncate">{r.name}</span>
-                    {isClinched && <span title="Ya clasificó" className="text-emerald-700 font-bold shrink-0">✓</span>}
+                    {isClinched && <span title="1º asegurado" className="text-emerald-700 font-bold shrink-0">✓</span>}
                   </span>
                 </td>
                 <td className="text-center text-muted">{r.pj}</td>
