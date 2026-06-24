@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useMemo, useRef, useState } from "react";
 import type { MatchView, Team } from "@/lib/types";
-import { computeStandings } from "@/lib/scoring";
+import { computeStandings, clinchedTop2 } from "@/lib/scoring";
 import { isLockedClient } from "@/lib/clientLock";
 import { parseKickoffMs, arDayKey, formatLongDateAr } from "@/lib/format";
 import StandingsTable from "./StandingsTable";
@@ -51,9 +51,11 @@ const KO_TITLE: Record<string, string> = {
 export default function FixtureClient({
   teams,
   matches,
+  isAdmin = false,
 }: {
   teams: Team[];
   matches: MatchView[];
+  isAdmin?: boolean;
 }) {
   const [tab, setTab] = useState<"proximos" | "jugados" | "tablas" | "goleadores" | "llaves">("proximos");
   const [preds, setPreds] = useState<PredMap>(() => {
@@ -162,9 +164,10 @@ export default function FixtureClient({
     );
   }
 
-  // Eliminatorias: solo se muestra cuando ya hay cruces con equipos definidos.
+  // Eliminatorias: visible cuando ya hay cruces con equipos, o siempre para el admin (preview).
   const hasKnockout = matches.some((m) => m.stage !== "group" && m.home_team && m.away_team);
-  const activeTab = tab === "llaves" && !hasKnockout ? "proximos" : tab;
+  const showKnockout = hasKnockout || isAdmin;
+  const activeTab = tab === "llaves" && !showKnockout ? "proximos" : tab;
 
   // Tarjeta de un día: separador de fecha + los partidos de ese día.
   const dayCard = (day: number, list: MatchView[], withDetail: boolean) => (
@@ -195,7 +198,7 @@ export default function FixtureClient({
       {/* Tabs (simétricos: 2 columnas en celular, una fila en PC) */}
       <div
         className={`grid grid-cols-2 ${
-          hasKnockout ? "sm:grid-cols-5" : "sm:grid-cols-4"
+          showKnockout ? "sm:grid-cols-5" : "sm:grid-cols-4"
         } gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-2xl w-full max-w-sm sm:max-w-none sm:w-fit mx-auto`}
       >
         <button className={`tab ${activeTab === "proximos" ? "tab-active" : ""}`} onClick={() => setTab("proximos")}>
@@ -210,12 +213,12 @@ export default function FixtureClient({
         <button className={`tab ${activeTab === "goleadores" ? "tab-active" : ""}`} onClick={() => setTab("goleadores")}>
           🥅 Goleadores
         </button>
-        {hasKnockout && (
+        {showKnockout && (
           <button
             className={`tab col-span-2 sm:col-span-1 ${activeTab === "llaves" ? "tab-active" : ""}`}
             onClick={() => setTab("llaves")}
           >
-            🏆 Eliminatorias
+            🏆 Eliminatorias{!hasKnockout && isAdmin ? " 👁️" : ""}
           </button>
         )}
       </div>
@@ -249,9 +252,12 @@ export default function FixtureClient({
 
       {activeTab === "tablas" && (
         <section>
-          <div className="flex flex-wrap justify-center gap-4 text-xs text-muted mb-4">
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-xs text-muted mb-4">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-3 h-3 rounded bg-emerald-400" /> Clasifican (1º y 2º)
+              <span className="inline-block w-3 h-3 rounded bg-emerald-500" /> Ya clasificó ✓
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 rounded bg-emerald-300" /> Puestos 1º y 2º
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block w-3 h-3 rounded bg-amber-400" /> Mejores 8 terceros (provisorio)
@@ -260,6 +266,7 @@ export default function FixtureClient({
           <div className="grid lg:grid-cols-2 gap-5 items-start">
           {groups.map(({ letter, groupTeams, groupMatches }) => {
             const standings = computeStandings(groupTeams, realResults(groupMatches));
+            const clinched = clinchedTop2(groupTeams, groupMatches);
             return (
               <details key={letter} className="card card-top p-4 group">
                 <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
@@ -270,7 +277,7 @@ export default function FixtureClient({
                   <span className="ml-auto text-muted text-sm transition-transform group-open:rotate-180">▾</span>
                 </summary>
                 <div className="mt-3">
-                  <StandingsTable rows={standings} qualify={2} qualifiedThirds={qualifiedThirds} />
+                  <StandingsTable rows={standings} qualify={2} qualifiedThirds={qualifiedThirds} clinched={clinched} />
                   <div className="mt-3 pt-1 border-t border-line">
                     {groupMatches.map((m, i) => (
                       <Fragment key={m.id}>
