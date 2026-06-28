@@ -65,6 +65,11 @@ export default function FixtureClient({
     }
     return init;
   });
+  const [pens, setPens] = useState<Record<number, number | null>>(() => {
+    const init: Record<number, number | null> = {};
+    for (const m of matches) if (m.pred_pen_winner != null) init[m.id] = m.pred_pen_winner;
+    return init;
+  });
   const [status, setStatus] = useState<Record<number, SaveStatus>>({});
   const timers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
@@ -72,8 +77,37 @@ export default function FixtureClient({
     setStatus((prev) => ({ ...prev, [id]: s }));
   }
 
+  // Guarda quién pasa en penales (cruce empatado). Reenvía el marcador empatado actual.
+  async function savePen(matchId: number, teamId: number) {
+    const p = preds[matchId];
+    if (!p || p.home === "" || p.away === "" || p.home !== p.away) return;
+    setPens((prev) => ({ ...prev, [matchId]: teamId }));
+    setStat(matchId, "saving");
+    try {
+      const res = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId, predHome: Number(p.home), predAway: Number(p.away), penWinner: teamId }),
+      });
+      if (!res.ok) throw new Error();
+      setStat(matchId, "saved");
+      setTimeout(() => setStat(matchId, undefined), 1500);
+    } catch {
+      setStat(matchId, "error");
+    }
+  }
+
   function onChange(matchId: number, home: string, away: string) {
     setPreds((prev) => ({ ...prev, [matchId]: { home, away } }));
+    // Si deja de ser empate, el ganador por penales ya no aplica.
+    if (home !== "" && away !== "" && home !== away) {
+      setPens((prev) => {
+        if (prev[matchId] == null) return prev;
+        const n = { ...prev };
+        delete n[matchId];
+        return n;
+      });
+    }
     if (timers.current[matchId]) clearTimeout(timers.current[matchId]);
     if (home === "" || away === "") return;
 
@@ -150,9 +184,11 @@ export default function FixtureClient({
         match={m}
         homeValue={p?.home ?? ""}
         awayValue={p?.away ?? ""}
+        penWinner={pens[m.id] ?? null}
         locked={isLockedClient(m)}
         status={status[m.id]}
         onChange={(h, a) => onChange(m.id, h, a)}
+        onPen={(teamId) => savePen(m.id, teamId)}
         tag={tag}
       />
     );
@@ -278,8 +314,10 @@ export default function FixtureClient({
             <Bracket
               matches={matches.filter((m) => m.stage !== "group")}
               preds={preds}
+              pens={pens}
               status={status}
               onChange={onChange}
+              onPen={savePen}
             />
           </div>
 

@@ -45,6 +45,7 @@ export type MatchView = Match & {
   away_team: Team | null;
   pred_home: number | null;
   pred_away: number | null;
+  pred_pen_winner: number | null; // a quién pronosticó como ganador de penales (cruces empatados)
   points: number | null;
 };
 

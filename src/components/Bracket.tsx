@@ -27,13 +27,17 @@ const clamp = (v: string) => v.replace(/[^0-9]/g, "").slice(0, 2);
 function BracketMatch({
   m,
   pred,
+  penWinner,
   status,
   onChange,
+  onPen,
 }: {
   m: MatchView | undefined;
   pred?: { home: string; away: string };
+  penWinner?: number | null;
   status: SaveStatus;
   onChange: (home: string, away: string) => void;
+  onPen?: (teamId: number) => void;
 }) {
   if (!m) return <div className="w-[150px] h-[52px]" />;
   const homeValue = pred?.home ?? "";
@@ -44,6 +48,23 @@ function BracketMatch({
   const homeName = m.home_team?.name ?? m.home_label ?? "Por definir";
   const awayName = m.away_team?.name ?? m.away_label ?? "Por definir";
   const inputStyle = s.boxStyle ?? { background: "#f4f8f6", borderColor: "rgba(15,40,30,0.14)" };
+
+  // Penales: empate pronosticado + editable + ambos equipos definidos.
+  const showPen =
+    m.home_team_id != null && m.away_team_id != null &&
+    homeValue !== "" && homeValue === awayValue &&
+    !s.readOnly && !s.disabled && !s.finished;
+  const penBtn = (teamId: number, code: string | null) => (
+    <button
+      type="button"
+      onClick={() => onPen?.(teamId)}
+      className={`flex items-center justify-center rounded px-1 py-0.5 border ${
+        penWinner === teamId ? "border-primary ring-1 ring-primary bg-emerald-50" : "border-line bg-white"
+      }`}
+    >
+      <Flag code={code} size={12} />
+    </button>
+  );
 
   return (
     <div className="relative w-[150px] rounded-lg border border-line bg-surface shadow-sm overflow-hidden">
@@ -82,6 +103,13 @@ function BracketMatch({
           aria-label={`Goles ${awayName}`}
         />
       </div>
+      {showPen && (
+        <div className="flex items-center gap-1 px-2 py-0.5 border-t border-line bg-[#f8fbfa]">
+          <span className="text-[8px] text-muted shrink-0" title="¿Quién pasa en penales?">🥅</span>
+          {penBtn(m.home_team_id!, m.home_team?.code ?? null)}
+          {penBtn(m.away_team_id!, m.away_team?.code ?? null)}
+        </div>
+      )}
     </div>
   );
 }
@@ -112,15 +140,19 @@ function Column({
   codes,
   byCode,
   preds,
+  pens,
   statusOf,
   onChangeFor,
+  onPenFor,
 }: {
   title: string;
   codes: string[];
   byCode: Map<string, MatchView>;
   preds: PredMap;
+  pens: Record<number, number | null>;
   statusOf: (id: number | undefined) => SaveStatus;
   onChangeFor: (m: MatchView | undefined) => (h: string, a: string) => void;
+  onPenFor: (m: MatchView | undefined) => (teamId: number) => void;
 }) {
   return (
     <div className="flex flex-col shrink-0">
@@ -133,8 +165,10 @@ function Column({
               key={code}
               m={m}
               pred={m ? preds[m.id] : undefined}
+              penWinner={m ? pens[m.id] ?? null : null}
               status={statusOf(m?.id)}
               onChange={onChangeFor(m)}
+              onPen={onPenFor(m)}
             />
           );
         })}
@@ -146,20 +180,27 @@ function Column({
 export default function Bracket({
   matches,
   preds,
+  pens,
   status,
   onChange,
+  onPen,
 }: {
   matches: MatchView[];
   preds: PredMap;
+  pens: Record<number, number | null>;
   status: Record<number, SaveStatus>;
   onChange: (matchId: number, home: string, away: string) => void;
+  onPen: (matchId: number, teamId: number) => void;
 }) {
   const byCode = new Map(matches.filter((m) => m.code).map((m) => [m.code!, m]));
   const statusOf = (id: number | undefined) => (id ? status[id] : undefined);
   const onChangeFor = (m: MatchView | undefined) => (h: string, a: string) => {
     if (m) onChange(m.id, h, a);
   };
-  const colProps = { byCode, preds, statusOf, onChangeFor };
+  const onPenFor = (m: MatchView | undefined) => (teamId: number) => {
+    if (m) onPen(m.id, teamId);
+  };
+  const colProps = { byCode, preds, pens, statusOf, onChangeFor, onPenFor };
   const final = byCode.get("M104");
   const third = byCode.get("M103");
 
@@ -179,9 +220,9 @@ export default function Bracket({
         <div className="flex flex-col items-center justify-center px-3 shrink-0 w-[180px]">
           <div className="text-4xl mb-1">🏆</div>
           <div className="text-[10px] font-extrabold uppercase tracking-widest text-amber-600 mb-2">Campeón</div>
-          <BracketMatch m={final} pred={final ? preds[final.id] : undefined} status={statusOf(final?.id)} onChange={onChangeFor(final)} />
+          <BracketMatch m={final} pred={final ? preds[final.id] : undefined} penWinner={final ? pens[final.id] ?? null : null} status={statusOf(final?.id)} onChange={onChangeFor(final)} onPen={onPenFor(final)} />
           <div className="text-[9px] font-bold uppercase tracking-wide text-muted mt-4 mb-1">3er puesto</div>
-          <BracketMatch m={third} pred={third ? preds[third.id] : undefined} status={statusOf(third?.id)} onChange={onChangeFor(third)} />
+          <BracketMatch m={third} pred={third ? preds[third.id] : undefined} penWinner={third ? pens[third.id] ?? null : null} status={statusOf(third?.id)} onChange={onChangeFor(third)} onPen={onPenFor(third)} />
         </div>
 
         {/* DERECHA */}

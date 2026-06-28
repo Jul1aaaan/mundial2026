@@ -8,6 +8,9 @@ import type { StandingRow, Team } from "./types";
 //       · Acertar los goles exactos del local: +1
 //       · Acertar los goles exactos del visitante: +1
 // Valores posibles: 0, 1, 5, 6, 7, 10.
+// Bonus por acertar quién avanza en una definición por penales (cruce empatado).
+export const PEN_BONUS = 3;
+
 export function predictionPoints(
   predHome: number,
   predAway: number,

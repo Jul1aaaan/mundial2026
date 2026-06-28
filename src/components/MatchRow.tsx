@@ -38,17 +38,21 @@ export default function MatchRow({
   match,
   homeValue,
   awayValue,
+  penWinner,
   locked,
   status,
   onChange,
+  onPen,
   tag,
 }: {
   match: MatchView;
   homeValue: string;
   awayValue: string;
+  penWinner?: number | null;
   locked: boolean;
   status: SaveStatus;
   onChange: (home: string, away: string) => void;
+  onPen?: (teamId: number) => void;
   tag?: string; // etiqueta opcional (ej. "Grupo J") que se muestra junto a la fecha
 }) {
   const homeName = match.home_team?.name ?? match.home_label ?? "Por definir";
@@ -59,6 +63,26 @@ export default function MatchRow({
 
   const { finished, variant, displayHome, displayAway, boxStyle, readOnly, disabled } =
     matchBoxState(match, homeValue, awayValue, locked);
+
+  // Penales: en eliminatorias, si se pronostica empate y se puede editar, se elige quién pasa.
+  const isKnockout = match.stage !== "group";
+  const drawPredicted = homeValue !== "" && homeValue === awayValue;
+  const bothTeams = match.home_team_id != null && match.away_team_id != null;
+  const showPen = isKnockout && bothTeams && drawPredicted && !readOnly && !disabled && !finished;
+  const penBtn = (teamId: number, code: string | null, name: string) => (
+    <button
+      type="button"
+      onClick={() => onPen?.(teamId)}
+      className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-colors ${
+        penWinner === teamId
+          ? "bg-primary text-white border-transparent font-bold"
+          : "bg-white text-foreground border-line hover:bg-[#f1f6f3]"
+      }`}
+    >
+      <Flag code={code} size={13} />
+      <span className="truncate max-w-[7rem]">{name}</span>
+    </button>
+  );
 
   return (
     <div className="py-2.5 px-2 sm:px-3 rounded-xl hover:bg-[#f4f8f6] transition-colors">
@@ -108,6 +132,15 @@ export default function MatchRow({
         </div>
         <TeamSide code={awayCode} name={awayName} align="left" />
       </div>
+
+      {/* Penales: en eliminatorias con empate pronosticado, elegir quién pasa (+bonus si acierta) */}
+      {showPen && (
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px]">
+          <span className="text-muted">🥅 ¿Quién pasa en penales?</span>
+          {penBtn(match.home_team_id!, homeCode, homeName)}
+          {penBtn(match.away_team_id!, awayCode, awayName)}
+        </div>
+      )}
 
       {/* Goles del partido (de ESPN), debajo de cada equipo */}
       {match.goals.length > 0 && (

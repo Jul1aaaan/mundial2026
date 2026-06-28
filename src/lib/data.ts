@@ -1,7 +1,7 @@
 import "server-only";
 import { query, pool } from "./db";
 import type { Match, MatchView, Team } from "./types";
-import { predictionPoints } from "./scoring";
+import { predictionPoints, PEN_BONUS } from "./scoring";
 import { resolveBracket } from "./bracket";
 import { parseKickoffMs } from "./format";
 
@@ -61,8 +61,8 @@ export async function getMatchViews(userId: number): Promise<MatchView[]> {
   const [teams, matches, preds] = await Promise.all([
     getTeams(),
     getMatches(),
-    query<{ match_id: number; pred_home: number; pred_away: number; points: number | null }[]>(
-      "SELECT match_id, pred_home, pred_away, points FROM predictions WHERE user_id = ?",
+    query<{ match_id: number; pred_home: number; pred_away: number; pred_pen_winner: number | null; points: number | null }[]>(
+      "SELECT match_id, pred_home, pred_away, pred_pen_winner, points FROM predictions WHERE user_id = ?",
       [userId]
     ),
   ]);
@@ -77,6 +77,7 @@ export async function getMatchViews(userId: number): Promise<MatchView[]> {
       away_team: m.away_team_id ? teamById.get(m.away_team_id) ?? null : null,
       pred_home: p?.pred_home ?? null,
       pred_away: p?.pred_away ?? null,
+      pred_pen_winner: p?.pred_pen_winner ?? null,
       points: p?.points ?? null,
     };
   });
@@ -87,10 +88,11 @@ export async function savePrediction(
   userId: number,
   matchId: number,
   predHome: number,
-  predAway: number
+  predAway: number,
+  penWinner?: number | null
 ): Promise<{ ok: boolean; error?: string }> {
   const rows = await query<Match[]>(
-    "SELECT id, DATE_FORMAT(kickoff, '%Y-%m-%dT%H:%i:%s') AS kickoff, status FROM matches WHERE id = ?",
+    "SELECT id, DATE_FORMAT(kickoff, '%Y-%m-%dT%H:%i:%s') AS kickoff, status, stage, home_team_id, away_team_id FROM matches WHERE id = ?",
     [matchId]
   );
   const m = rows[0];
@@ -99,12 +101,31 @@ export async function savePrediction(
   if (predHome < 0 || predAway < 0 || predHome > 99 || predAway > 99) {
     return { ok: false, error: "Resultado inválido." };
   }
+
+  // El ganador por penales solo aplica a eliminatorias con empate pronosticado, y
+  // debe ser uno de los dos equipos del cruce. Si no es empate, se limpia.
+  let penToStore: number | null | undefined;
+  if (predHome !== predAway) {
+    penToStore = null; // no es empate → no hay penales
+  } else if (penWinner !== undefined) {
+    const valid =
+      m.stage !== "group" &&
+      (penWinner === null || penWinner === m.home_team_id || penWinner === m.away_team_id);
+    penToStore = valid ? penWinner : null;
+  }
+
   await query(
     `INSERT INTO predictions (user_id, match_id, pred_home, pred_away)
      VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE pred_home = VALUES(pred_home), pred_away = VALUES(pred_away)`,
     [userId, matchId, predHome, predAway]
   );
+  if (penToStore !== undefined) {
+    await query(
+      "UPDATE predictions SET pred_pen_winner = ? WHERE user_id = ? AND match_id = ?",
+      [penToStore, userId, matchId]
+    );
+  }
   return { ok: true };
 }
 
@@ -241,7 +262,7 @@ export async function recomputeBracket(): Promise<void> {
 // Recalcula los puntos de todos los pronósticos de un partido ya finalizado.
 export async function rescoreMatch(matchId: number): Promise<void> {
   const rows = await query<Match[]>(
-    "SELECT home_score, away_score, status FROM matches WHERE id = ?",
+    "SELECT home_score, away_score, status, winner_team_id FROM matches WHERE id = ?",
     [matchId]
   );
   const m = rows[0];
@@ -252,12 +273,18 @@ export async function rescoreMatch(matchId: number): Promise<void> {
       await conn.query("UPDATE predictions SET points = NULL WHERE match_id = ?", [matchId]);
       return;
     }
-    const preds = await query<{ id: number; pred_home: number; pred_away: number }[]>(
-      "SELECT id, pred_home, pred_away FROM predictions WHERE match_id = ?",
+    // ¿Se definió por penales? (empate en la cancha + ganador marcado = eliminatorias).
+    const penShootout = m.home_score === m.away_score && m.winner_team_id != null;
+    const preds = await query<{ id: number; pred_home: number; pred_away: number; pred_pen_winner: number | null }[]>(
+      "SELECT id, pred_home, pred_away, pred_pen_winner FROM predictions WHERE match_id = ?",
       [matchId]
     );
     for (const p of preds) {
-      const pts = predictionPoints(p.pred_home, p.pred_away, m.home_score, m.away_score);
+      let pts = predictionPoints(p.pred_home, p.pred_away, m.home_score, m.away_score);
+      // Bonus: pronosticó empate y acertó quién pasa en los penales.
+      if (penShootout && p.pred_home === p.pred_away && p.pred_pen_winner === m.winner_team_id) {
+        pts += PEN_BONUS;
+      }
       await conn.query("UPDATE predictions SET points = ? WHERE id = ?", [pts, p.id]);
     }
   } finally {
