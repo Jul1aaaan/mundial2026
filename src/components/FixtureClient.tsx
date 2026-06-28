@@ -169,12 +169,15 @@ export default function FixtureClient({
     })).filter((r) => r.list.length > 0);
   }, [matches]);
 
-  // Partidos de grupos ya jugados, agrupados por día (descendente).
-  const groupMatchesAll = useMemo(() => matches.filter((m) => m.stage === "group"), [matches]);
+  // TODOS los partidos ya jugados (grupos y eliminatorias), agrupados por día (descendente).
   const jugadosDays = useMemo(
-    () => groupByDay(groupMatchesAll.filter((m) => m.status === "finished"), true),
-    [groupMatchesAll]
+    () => groupByDay(matches.filter((m) => m.status === "finished"), true),
+    [matches]
   );
+
+  // Etiqueta de un partido: "Grupo X" en fase de grupos, o el nombre de la ronda en eliminatorias.
+  const tagFor = (m: MatchView) =>
+    m.stage === "group" ? `Grupo ${m.group_letter}` : KO_TITLE[m.stage] ?? "Eliminatorias";
 
   function row(m: MatchView, tag?: string) {
     const p = preds[m.id];
@@ -209,11 +212,11 @@ export default function FixtureClient({
         {list.map((m) =>
           withDetail ? (
             <div key={m.id} className="pb-1">
-              {row(m, `Grupo ${m.group_letter}`)}
+              {row(m, tagFor(m))}
               <MatchDetail matchId={m.id} />
             </div>
           ) : (
-            row(m, `Grupo ${m.group_letter}`)
+            row(m, tagFor(m))
           )
         )}
       </div>
