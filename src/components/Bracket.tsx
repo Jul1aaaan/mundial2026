@@ -2,6 +2,7 @@
 import type { MatchView } from "@/lib/types";
 import { matchBoxState, pointsBadgeClass } from "@/lib/matchBox";
 import { isLockedClient } from "@/lib/clientLock";
+import { formatKickoff } from "@/lib/format";
 import Flag from "./Flag";
 
 type SaveStatus = "saving" | "saved" | "error" | undefined;
@@ -73,6 +74,11 @@ function BracketMatch({
         <span className={`absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 rounded shadow z-10 ${pointsBadgeClass(m.points)}`}>
           {m.points === 0 ? "0" : `+${m.points}`}
         </span>
+      )}
+      {m.kickoff && (
+        <div className="text-center text-[8.5px] leading-tight text-muted py-0.5 border-b border-line bg-[#f6faf8]">
+          {formatKickoff(m.kickoff)}
+        </div>
       )}
       <div className="flex items-center gap-1.5 px-2 py-1">
         <Flag code={m.home_team?.code ?? null} size={14} />
