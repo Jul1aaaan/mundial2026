@@ -1,4 +1,5 @@
 import { computeStandings } from "./scoring";
+import { THIRD_PLACE_ALLOCATION } from "./thirdsAllocation";
 import type { Match, StandingRow, Team } from "./types";
 
 // ---- Estructura oficial del cuadro del Mundial 2026 (48 equipos) ----
@@ -133,7 +134,9 @@ export function resolveBracket(
   const runnerG = (g: string) => standings.get(g)![1]?.teamId ?? null;
   const thirdG = (g: string) => standings.get(g)![2];
 
-  let thirdAssign = new Map<string, string>(); // codeLlave -> letra de grupo
+  // Asignación de los 8 mejores terceros usando la tabla oficial de FIFA (Annexe C),
+  // así los cruces de terceros quedan idénticos a los de FIFA/Google.
+  const thirdAssign = new Map<string, string>(); // codeLlave -> letra de grupo del 3º
   {
     const thirds = groupLetters
       .map((g) => ({ g, row: thirdG(g) }))
@@ -145,8 +148,20 @@ export function resolveBracket(
           b.row.gf - a.row.gf ||
           a.g.localeCompare(b.g)
       );
-    const top8 = thirds.slice(0, 8).map((x) => x.g);
-    thirdAssign = assignThirds(top8) ?? new Map();
+    const top8 = thirds.slice(0, 8).map((x) => x.g).sort();
+    const alloc = THIRD_PLACE_ALLOCATION[top8.join("")];
+    if (alloc) {
+      // Cada ranura "T" (away) pertenece al ganador del grupo en su "home" (W).
+      for (const def of KO_DEFS) {
+        if (def.away.t !== "T" || def.home.t !== "W") continue;
+        const thirdGroup = alloc["1" + def.home.g];
+        if (thirdGroup) thirdAssign.set(def.code, thirdGroup);
+      }
+    } else {
+      // Fallback (no debería pasar con 8 grupos válidos): emparejamiento propio.
+      const fb = assignThirds(top8);
+      if (fb) for (const [code, g] of fb) thirdAssign.set(code, g);
+    }
   }
 
   const thirdTeamForCode = (code: string): number | null => {
