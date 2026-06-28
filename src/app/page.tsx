@@ -28,7 +28,7 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <FixtureClient teams={teams} matches={matches} isAdmin={user.admin} />
+        <FixtureClient teams={teams} matches={matches} />
       </main>
       <Footer />
     </>

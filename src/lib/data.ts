@@ -227,16 +227,14 @@ export async function recomputeBracket(): Promise<void> {
   for (const r of resolved) {
     const current = byCode.get(r.code);
     if (!current) continue;
-    const teamsChanged =
-      current.home_team_id !== r.homeTeamId || current.away_team_id !== r.awayTeamId;
+    // La proyección de las llaves puede cambiar de equipos a medida que avanzan los
+    // grupos. NO borramos los pronósticos: quedan pegados a la POSICIÓN del cuadro
+    // (ej. "ganador de la llave"), y se puntúan contra el resultado real del partido.
     await query(
       `UPDATE matches SET home_team_id = ?, away_team_id = ?, home_label = ?, away_label = ?
        WHERE id = ?`,
       [r.homeTeamId, r.awayTeamId, r.homeLabel, r.awayLabel, current.id]
     );
-    if (teamsChanged) {
-      await query("DELETE FROM predictions WHERE match_id = ?", [current.id]);
-    }
   }
 }
 

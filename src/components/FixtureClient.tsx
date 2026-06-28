@@ -51,13 +51,11 @@ const KO_TITLE: Record<string, string> = {
 export default function FixtureClient({
   teams,
   matches,
-  isAdmin = false,
 }: {
   teams: Team[];
   matches: MatchView[];
-  isAdmin?: boolean;
 }) {
-  const [tab, setTab] = useState<"proximos" | "jugados" | "tablas" | "goleadores" | "llaves">("proximos");
+  const [tab, setTab] = useState<"jugados" | "tablas" | "goleadores" | "llaves">("llaves");
   const [preds, setPreds] = useState<PredMap>(() => {
     const init: PredMap = {};
     for (const m of matches) {
@@ -137,12 +135,8 @@ export default function FixtureClient({
     })).filter((r) => r.list.length > 0);
   }, [matches]);
 
-  // Partidos de grupos agrupados por día: próximos (no jugados, ascendente) y jugados (descendente).
+  // Partidos de grupos ya jugados, agrupados por día (descendente).
   const groupMatchesAll = useMemo(() => matches.filter((m) => m.stage === "group"), [matches]);
-  const proximosDays = useMemo(
-    () => groupByDay(groupMatchesAll.filter((m) => m.status !== "finished"), false),
-    [groupMatchesAll]
-  );
   const jugadosDays = useMemo(
     () => groupByDay(groupMatchesAll.filter((m) => m.status === "finished"), true),
     [groupMatchesAll]
@@ -164,10 +158,7 @@ export default function FixtureClient({
     );
   }
 
-  // Eliminatorias: visible cuando ya hay cruces con equipos, o siempre para el admin (preview).
-  const hasKnockout = matches.some((m) => m.stage !== "group" && m.home_team && m.away_team);
-  const showKnockout = hasKnockout || isAdmin;
-  const activeTab = tab === "llaves" && !showKnockout ? "proximos" : tab;
+  const activeTab = tab;
 
   // Tarjeta de un día: separador de fecha + los partidos de ese día.
   const dayCard = (day: number, list: MatchView[], withDetail: boolean) => (
@@ -196,12 +187,8 @@ export default function FixtureClient({
   return (
     <div>
       {/* Tabs (simétricos: 2 columnas en celular, una fila en PC) */}
-      <div
-        className={`grid grid-cols-2 ${
-          showKnockout ? "sm:grid-cols-5" : "sm:grid-cols-4"
-        } gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-2xl w-full max-w-sm sm:max-w-none sm:w-fit mx-auto`}
-      >
-        <button className={`tab ${activeTab === "proximos" ? "tab-active" : ""}`} onClick={() => setTab("proximos")}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-2xl w-full max-w-sm sm:max-w-none sm:w-fit mx-auto">
+        <button className={`tab ${activeTab === "llaves" ? "tab-active" : ""}`} onClick={() => setTab("llaves")}>
           📅 Próximos
         </button>
         <button className={`tab ${activeTab === "jugados" ? "tab-active" : ""}`} onClick={() => setTab("jugados")}>
@@ -213,29 +200,7 @@ export default function FixtureClient({
         <button className={`tab ${activeTab === "goleadores" ? "tab-active" : ""}`} onClick={() => setTab("goleadores")}>
           🥅 Goleadores
         </button>
-        {showKnockout && (
-          <button
-            className={`tab col-span-2 sm:col-span-1 ${activeTab === "llaves" ? "tab-active" : ""}`}
-            onClick={() => setTab("llaves")}
-          >
-            🏆 Eliminatorias{!hasKnockout && isAdmin ? " 👁️" : ""}
-          </button>
-        )}
       </div>
-
-      {/* Próximos partidos: en juego + por jugar, por día (ascendente) */}
-      {activeTab === "proximos" && (
-        <section className="space-y-5">
-          {proximosDays.length === 0 ? (
-            <div className="card p-6 text-center text-muted text-sm">
-              No quedan partidos de grupos por jugar. Mirá los <b>Jugados</b>
-              {hasKnockout ? " o las Eliminatorias" : ""}.
-            </div>
-          ) : (
-            proximosDays.map(({ day, list }) => dayCard(day, list, false))
-          )}
-        </section>
-      )}
 
       {/* Jugados: finalizados, por día (descendente) */}
       {activeTab === "jugados" && (
@@ -304,8 +269,8 @@ export default function FixtureClient({
       {activeTab === "llaves" && (
         <section className="space-y-5">
           <p className="text-sm text-muted text-center -mt-1">
-            Las llaves se completan <b className="text-primary">automáticamente</b> con los resultados reales.
-            Cuando se definan los equipos vas a poder pronosticarlas.
+            <b className="text-primary">Proyección</b> según las posiciones de hoy: se va actualizando con
+            los resultados. Ya podés cargar tus pronósticos de cada cruce.
           </p>
 
           {/* Cuadro tipo llaves (pantallas grandes) */}
