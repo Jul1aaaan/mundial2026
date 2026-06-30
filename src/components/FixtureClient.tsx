@@ -51,11 +51,13 @@ const KO_TITLE: Record<string, string> = {
 export default function FixtureClient({
   teams,
   matches,
+  isAdmin = false,
 }: {
   teams: Team[];
   matches: MatchView[];
+  isAdmin?: boolean;
 }) {
-  const [tab, setTab] = useState<"jugados" | "tablas" | "goleadores" | "llaves">("llaves");
+  const [tab, setTab] = useState<"proximos" | "jugados" | "tablas" | "goleadores" | "llaves">("proximos");
   const [preds, setPreds] = useState<PredMap>(() => {
     const init: PredMap = {};
     for (const m of matches) {
@@ -197,7 +199,8 @@ export default function FixtureClient({
     );
   }
 
-  const activeTab = tab;
+  // La pestaña "Llaves" (cuadro) es solo para el admin.
+  const activeTab = tab === "llaves" && !isAdmin ? "proximos" : tab;
 
   // Tarjeta de un día: separador de fecha + los partidos de ese día.
   const dayCard = (day: number, list: MatchView[], withDetail: boolean) => (
@@ -226,8 +229,12 @@ export default function FixtureClient({
   return (
     <div>
       {/* Tabs (simétricos: 2 columnas en celular, una fila en PC) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-2xl w-full max-w-sm sm:max-w-none sm:w-fit mx-auto">
-        <button className={`tab ${activeTab === "llaves" ? "tab-active" : ""}`} onClick={() => setTab("llaves")}>
+      <div
+        className={`grid grid-cols-2 ${
+          isAdmin ? "sm:grid-cols-5" : "sm:grid-cols-4"
+        } gap-2 mb-5 p-1.5 bg-[#e3ede8] rounded-2xl w-full max-w-sm sm:max-w-none sm:w-fit mx-auto`}
+      >
+        <button className={`tab ${activeTab === "proximos" ? "tab-active" : ""}`} onClick={() => setTab("proximos")}>
           📅 Próximos
         </button>
         <button className={`tab ${activeTab === "jugados" ? "tab-active" : ""}`} onClick={() => setTab("jugados")}>
@@ -239,6 +246,14 @@ export default function FixtureClient({
         <button className={`tab ${activeTab === "goleadores" ? "tab-active" : ""}`} onClick={() => setTab("goleadores")}>
           🥅 Goleadores
         </button>
+        {isAdmin && (
+          <button
+            className={`tab col-span-2 sm:col-span-1 ${activeTab === "llaves" ? "tab-active" : ""}`}
+            onClick={() => setTab("llaves")}
+          >
+            🏆 Llaves
+          </button>
+        )}
       </div>
 
       {/* Jugados: finalizados, por día (descendente) */}
@@ -305,15 +320,34 @@ export default function FixtureClient({
 
       {activeTab === "goleadores" && <Goleadores />}
 
-      {activeTab === "llaves" && (
+      {/* Próximos: lista de eliminatorias por ronda (para todos) */}
+      {activeTab === "proximos" && (
         <section className="space-y-5">
           <p className="text-sm text-muted text-center -mt-1">
             <b className="text-primary">Proyección</b> según las posiciones de hoy: se va actualizando con
             los resultados. Ya podés cargar tus pronósticos de cada cruce.
           </p>
+          {knockout.map((r) => (
+            <div key={r.stage} className="card card-top p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="chip chip-green">{r.name}</span>
+                <span className="text-xs text-muted">{r.list.length} {r.list.length === 1 ? "partido" : "partidos"}</span>
+              </div>
+              <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
+                {r.list.map((m) => row(m))}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
-          {/* Cuadro tipo llaves (pantallas grandes) */}
-          <div className="hidden xl:block card card-top p-4">
+      {/* Llaves: el cuadro completo (solo admin) */}
+      {activeTab === "llaves" && isAdmin && (
+        <section className="space-y-5">
+          <p className="text-sm text-muted text-center -mt-1">
+            Cuadro completo (proyección según las posiciones de hoy). Deslizá para los costados para ver todo.
+          </p>
+          <div className="card card-top p-4">
             <Bracket
               matches={matches.filter((m) => m.stage !== "group")}
               preds={preds}
@@ -322,21 +356,6 @@ export default function FixtureClient({
               onChange={onChange}
               onPen={savePen}
             />
-          </div>
-
-          {/* Lista por rondas (pantallas chicas) */}
-          <div className="xl:hidden space-y-5">
-            {knockout.map((r) => (
-              <div key={r.stage} className="card card-top p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="chip chip-green">{r.name}</span>
-                  <span className="text-xs text-muted">{r.list.length} {r.list.length === 1 ? "partido" : "partidos"}</span>
-                </div>
-                <div className="grid md:grid-cols-2 gap-x-6 divide-y md:divide-y-0 divide-line">
-                  {r.list.map((m) => row(m))}
-                </div>
-              </div>
-            ))}
           </div>
         </section>
       )}
