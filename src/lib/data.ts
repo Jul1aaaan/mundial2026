@@ -1,7 +1,7 @@
 import "server-only";
 import { query, pool } from "./db";
 import type { Match, MatchView, Team } from "./types";
-import { predictionPoints, PEN_BONUS } from "./scoring";
+import { predictionPoints, knockoutExtra } from "./scoring";
 import { resolveBracket } from "./bracket";
 import { parseKickoffMs } from "./format";
 
@@ -262,7 +262,7 @@ export async function recomputeBracket(): Promise<void> {
 // Recalcula los puntos de todos los pronósticos de un partido ya finalizado.
 export async function rescoreMatch(matchId: number): Promise<void> {
   const rows = await query<Match[]>(
-    "SELECT home_score, away_score, status, winner_team_id FROM matches WHERE id = ?",
+    "SELECT home_score, away_score, status, winner_team_id, home_team_id, away_team_id FROM matches WHERE id = ?",
     [matchId]
   );
   const m = rows[0];
@@ -273,18 +273,23 @@ export async function rescoreMatch(matchId: number): Promise<void> {
       await conn.query("UPDATE predictions SET points = NULL WHERE match_id = ?", [matchId]);
       return;
     }
-    // ¿Se definió por penales? (empate en la cancha + ganador marcado = eliminatorias).
-    const penShootout = m.home_score === m.away_score && m.winner_team_id != null;
     const preds = await query<{ id: number; pred_home: number; pred_away: number; pred_pen_winner: number | null }[]>(
       "SELECT id, pred_home, pred_away, pred_pen_winner FROM predictions WHERE match_id = ?",
       [matchId]
     );
     for (const p of preds) {
-      let pts = predictionPoints(p.pred_home, p.pred_away, m.home_score, m.away_score);
-      // Bonus: pronosticó empate y acertó quién pasa en los penales.
-      if (penShootout && p.pred_home === p.pred_away && p.pred_pen_winner === m.winner_team_id) {
-        pts += PEN_BONUS;
-      }
+      const pts =
+        predictionPoints(p.pred_home, p.pred_away, m.home_score, m.away_score) +
+        knockoutExtra({
+          predHome: p.pred_home,
+          predAway: p.pred_away,
+          predPenWinner: p.pred_pen_winner,
+          realHome: m.home_score,
+          realAway: m.away_score,
+          winnerTeamId: m.winner_team_id,
+          homeTeamId: m.home_team_id,
+          awayTeamId: m.away_team_id,
+        });
       await conn.query("UPDATE predictions SET points = ? WHERE id = ?", [pts, p.id]);
     }
   } finally {

@@ -1,7 +1,7 @@
 import "server-only";
 import { query } from "./db";
 import { setMatchResult, recomputeBracket } from "./data";
-import { backfillEspnGoals } from "./espn";
+import { backfillEspnGoals, backfillKnockoutWinners } from "./espn";
 
 // Sincroniza resultados reales desde football-data.org (plan gratuito incluye el Mundial, código "WC").
 // Mapea por pareja de equipos, así no depende de que el orden local/real coincida.
@@ -59,7 +59,9 @@ type ApiMatch = {
   awayTeam: { name: string; tla?: string };
   score: {
     winner?: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
+    duration?: string; // REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT
     fullTime: { home: number | null; away: number | null };
+    regularTime?: { home: number | null; away: number | null };
   };
 };
 
@@ -139,29 +141,44 @@ export async function syncResults(): Promise<SyncResult> {
     }
 
     // Cargar resultado si el partido terminó Y el resultado es nuevo o cambió.
-    const ft = am.score?.fullTime;
-    if (am.status === "FINISHED" && ft?.home != null && ft?.away != null) {
+    const sc = am.score;
+    // En definiciones por penales football-data mete los penales dentro de `fullTime`
+    // (ej. 1-1 + penales 3-2 => 4-3). Usamos el TIEMPO REGULAR como marcador; el ganador
+    // de los penales lo completa ESPN aparte (backfillKnockoutWinners).
+    const isPen = sc?.duration === "PENALTY_SHOOTOUT";
+    const src = isPen && sc?.regularTime?.home != null ? sc.regularTime : sc?.fullTime;
+    if (am.status === "FINISHED" && src?.home != null && src?.away != null) {
       // Reorientar los goles según quién es local en nuestro registro.
       const homeIsApiHome = target.home_code === hc;
-      const homeScore = homeIsApiHome ? ft.home : ft.away;
-      const awayScore = homeIsApiHome ? ft.away : ft.home;
+      const homeScore = homeIsApiHome ? src.home : src.away;
+      const awayScore = homeIsApiHome ? src.away : src.home;
       const changed =
         target.status !== "finished" ||
         target.home_score !== homeScore ||
         target.away_score !== awayScore;
       if (changed) {
-        // Ganador (para eliminatorias definidas por penales).
+        // Ganador en la cancha (football-data). En penales lo deja ESPN luego.
         let winnerTeamId: number | null = null;
-        if (am.score?.winner === "HOME_TEAM") winnerTeamId = homeIsApiHome ? target.home_team_id : target.away_team_id;
-        else if (am.score?.winner === "AWAY_TEAM") winnerTeamId = homeIsApiHome ? target.away_team_id : target.home_team_id;
+        if (!isPen) {
+          if (sc?.winner === "HOME_TEAM") winnerTeamId = homeIsApiHome ? target.home_team_id : target.away_team_id;
+          else if (sc?.winner === "AWAY_TEAM") winnerTeamId = homeIsApiHome ? target.away_team_id : target.home_team_id;
+        }
         await setMatchResult(target.id, homeScore, awayScore, winnerTeamId, false);
         resultsApplied++;
       }
     }
   }
 
-  // Si hubo resultados nuevos, recalcular el cuadro de eliminatorias.
-  if (resultsApplied > 0) await recomputeBracket();
+  // Completar el ganador de los cruces definidos por penales (desde ESPN).
+  let koWinners = 0;
+  try {
+    koWinners = await backfillKnockoutWinners();
+  } catch {
+    /* no es crítico */
+  }
+
+  // Si hubo resultados nuevos o se definió algún ganador por penales, recalcular el cuadro.
+  if (resultsApplied > 0 || koWinners > 0) await recomputeBracket();
 
   // Completar los goles (ESPN) de los partidos finalizados que aún no los tienen.
   let goalsFilled = 0;

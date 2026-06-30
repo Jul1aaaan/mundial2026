@@ -8,9 +8,6 @@ import type { StandingRow, Team } from "./types";
 //       · Acertar los goles exactos del local: +1
 //       · Acertar los goles exactos del visitante: +1
 // Valores posibles: 0, 1, 5, 6, 7, 10.
-// Bonus por acertar quién avanza en una definición por penales (cruce empatado).
-export const PEN_BONUS = 3;
-
 export function predictionPoints(
   predHome: number,
   predAway: number,
@@ -24,6 +21,31 @@ export function predictionPoints(
   if (predHome === realHome) pts += 1;
   if (predAway === realAway) pts += 1;
   return pts;
+}
+
+// Puntos EXTRA en eliminatorias que se definieron por PENALES (empate en la cancha + un
+// equipo que avanza). Se suman a los puntos normales del marcador:
+//   - Si pronosticó un GANADOR (no empate) y ese equipo es el que avanza: +5
+//     (acertó quién pasa, aunque el partido haya terminado empatado y a penales).
+//   - Si pronosticó EMPATE y eligió bien quién pasa en los penales: +3.
+// En partidos definidos en los 90'/120' (sin penales) esto no aplica: el +5 por acertar
+// quién gana ya lo da el puntaje normal del marcador.
+export function knockoutExtra(p: {
+  predHome: number;
+  predAway: number;
+  predPenWinner: number | null;
+  realHome: number;
+  realAway: number;
+  winnerTeamId: number | null;
+  homeTeamId: number | null;
+  awayTeamId: number | null;
+}): number {
+  if (p.realHome !== p.realAway || p.winnerTeamId == null) return 0; // no se definió por penales
+  if (p.predHome === p.predAway) {
+    return p.predPenWinner != null && p.predPenWinner === p.winnerTeamId ? 3 : 0;
+  }
+  const predWinner = p.predHome > p.predAway ? p.homeTeamId : p.awayTeamId;
+  return predWinner != null && predWinner === p.winnerTeamId ? 5 : 0;
 }
 
 type ResultLike = {

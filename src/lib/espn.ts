@@ -1,6 +1,7 @@
 import "server-only";
 import { query } from "./db";
 import { codeFor } from "./sync";
+import { rescoreMatch } from "./data";
 import type { Goal, TimelineItem, Lineup, LineupPlayer, EspnDetail } from "./types";
 
 // API pública (no oficial) de ESPN para datos detallados del Mundial 2026.
@@ -106,6 +107,73 @@ export async function backfillEspnGoals(): Promise<number> {
       JSON.stringify(goals),
       m.id,
     ]);
+    done++;
+  }
+  return done;
+}
+
+// Resultado de eliminatorias desde ESPN: marcador en los 90'/120' (sin penales) y, si se
+// definió por penales, el código del equipo que avanza. football-data NO es fiable acá
+// (mezcla los penales en el marcador y a veces no marca el ganador).
+export async function fetchEspnResult(eventId: string): Promise<{
+  homeCode: string | null;
+  awayCode: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  penWinnerCode: string | null;
+} | null> {
+  const sum = await espnGet(`/summary?event=${eventId}`);
+  const comp = sum?.header?.competitions?.[0];
+  if (!comp) return null;
+  const isPen = /PEN/i.test(comp.status?.type?.name ?? "");
+  let home: { code: string | null; score: number | null } | null = null;
+  let away: { code: string | null; score: number | null } | null = null;
+  let penWinnerCode: string | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const c of (comp.competitors ?? []) as any[]) {
+    const code = codeFor(c.team?.displayName ?? "", c.team?.abbreviation);
+    const score = c.score != null ? Number(c.score) : null;
+    if (c.homeAway === "home") home = { code, score };
+    else away = { code, score };
+    if (isPen && c.winner) penWinnerCode = code;
+  }
+  if (!home || !away) return null;
+  return { homeCode: home.code, awayCode: away.code, homeScore: home.score, awayScore: away.score, penWinnerCode };
+}
+
+// Completa el GANADOR (quién avanza) de los cruces de eliminatorias que terminaron empatados
+// y se definieron por penales, usando ESPN. Re-puntúa esos partidos.
+export async function backfillKnockoutWinners(): Promise<number> {
+  const pending = await query<
+    {
+      id: number; kickoff: string; home_code: string; away_code: string;
+      home_team_id: number; away_team_id: number; espn_id: string | null;
+    }[]
+  >(
+    `SELECT m.id, DATE_FORMAT(m.kickoff, '%Y-%m-%dT%H:%i:%s') AS kickoff,
+            th.code AS home_code, ta.code AS away_code,
+            m.home_team_id, m.away_team_id, m.espn_id
+     FROM matches m
+     JOIN teams th ON th.id = m.home_team_id
+     JOIN teams ta ON ta.id = m.away_team_id
+     WHERE m.stage <> 'group' AND m.status = 'finished'
+       AND m.home_score IS NOT NULL AND m.home_score = m.away_score
+       AND m.winner_team_id IS NULL AND m.kickoff IS NOT NULL
+     LIMIT 25`
+  );
+
+  let done = 0;
+  for (const m of pending) {
+    const eventId = m.espn_id ?? (await findEspnEventId(m.kickoff, m.home_code, m.away_code));
+    if (!eventId) continue;
+    const r = await fetchEspnResult(eventId);
+    if (!r || !r.penWinnerCode) continue;
+    const winnerId =
+      r.penWinnerCode === m.home_code ? m.home_team_id :
+      r.penWinnerCode === m.away_code ? m.away_team_id : null;
+    if (winnerId == null) continue;
+    await query("UPDATE matches SET winner_team_id = ?, espn_id = COALESCE(espn_id, ?) WHERE id = ?", [winnerId, eventId, m.id]);
+    await rescoreMatch(m.id); // recalcula puntos (ahora con el bonus de penales)
     done++;
   }
   return done;
